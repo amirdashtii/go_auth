@@ -7,6 +7,11 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
+type LoginRequest struct {
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required"`
+}
+
 func HandleValidationError(err error) map[string]interface{} {
 	if validationErr, ok := err.(validator.ValidationErrors); ok {
 		errors := make(map[string]string)
@@ -24,11 +29,15 @@ func HandleValidationError(err error) map[string]interface{} {
 	}
 }
 
-
 func ValidateUser(user entities.User) error {
 	validate := validator.New()
 	RegisterValidator(validate)
 	return validate.Struct(user)
+}
+
+func ValidateLogin(req LoginRequest) error {
+	validate := validator.New()
+	return validate.Struct(req)
 }
 
 func RegisterValidator(v *validator.Validate) {

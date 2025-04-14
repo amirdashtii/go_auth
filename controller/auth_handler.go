@@ -60,13 +60,91 @@ func (h *AuthHTTPHandler) RegisterHandler(c *gin.Context) {
 }
 
 func (h *AuthHTTPHandler) LoginHandler(c *gin.Context) {
-	// TODO: Implement login logic with email and password validation
+	var req validators.LoginRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid request format",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	if err := validators.ValidateLogin(req); err != nil {
+		c.JSON(http.StatusBadRequest, validators.HandleValidationError(err))
+		return
+	}
+
+	token, err := h.svc.Login(req.Email, req.Password)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Login failed",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Login successful",
+		"token": token,
+	})
 }
 
 func (h *AuthHTTPHandler) LogoutHandler(c *gin.Context) {
-	// TODO: Implement logout logic and token invalidation
+	// Get token from Authorization header
+	token := c.GetHeader("Authorization")
+	if token == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Authorization token is required",
+		})
+		return
+	}
+
+	// Remove "Bearer " prefix if present
+	if len(token) > 7 && token[:7] == "Bearer " {
+		token = token[7:]
+	}
+
+	err := h.svc.Logout(token)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Logout failed",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Logout successful",
+	})
 }
 
 func (h *AuthHTTPHandler) RefreshTokenHandler(c *gin.Context) {
-	// TODO: Implement token refresh logic
+	// Get token from Authorization header
+	token := c.GetHeader("Authorization")
+	if token == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Authorization token is required",
+		})
+		return
+	}
+
+	// Remove "Bearer " prefix if present
+	if len(token) > 7 && token[:7] == "Bearer " {
+		token = token[7:]
+	}
+
+	newToken, err := h.svc.RefreshToken(token)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Token refresh failed",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Token refreshed successfully",
+		"token": newToken,
+	})
 }

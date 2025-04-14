@@ -62,8 +62,28 @@ func (r *PGRepository) FindByEmail(email string) (*entities.User, error) {
 }
 
 func (r *PGRepository) FindByID(id uuid.UUID) (*entities.User, error) {
-	// TODO: Implement find user by ID logic
-	return nil, nil
+	query := `
+		SELECT id, email, password, is_active, is_admin, created_at, updated_at
+		FROM users
+		WHERE id = $1
+	`
+
+	var user entities.User	
+	err := r.db.QueryRow(query, id).Scan(
+		&user.ID,
+		&user.Email,
+		&user.Password,
+		&user.IsActive,
+		&user.IsAdmin,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
 }
 
 func (r *PGRepository) Update(user *entities.User) error {
