@@ -3,8 +3,9 @@ package repository
 import (
 	"database/sql"
 	"fmt"
-	"os"
+	"log"
 
+	"github.com/amirdashtii/go_auth/config"
 	"github.com/amirdashtii/go_auth/infrastructure/repository/migrations"
 )
 
@@ -13,11 +14,16 @@ type PGRepository struct {
 }
 
 func NewPGRepository() (*PGRepository, error) {
-	host := os.Getenv("PG_HOST")
-	user := os.Getenv("PG_USER")
-	password := os.Getenv("PG_PASSWORD")
-	dbName := os.Getenv("PG_DB_NAME")
-	port := os.Getenv("PG_PORT")
+	config, err := config.LoadConfig()
+	if err != nil {
+		log.Fatalf("Error loading config: %v", err)
+	}
+
+	host := config.DB.Host
+	user := config.DB.User
+	password := config.DB.Password
+	dbName := config.DB.Name
+	port := config.DB.Port
 
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable", host, user, password, dbName, port)
 	db, err := sql.Open("postgres", dsn)

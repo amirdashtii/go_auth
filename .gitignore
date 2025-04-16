@@ -1,16 +1,42 @@
-# os
-.DS_Store
+# Config files
+config/development.yaml
+config/production.yaml
+.env
 
-# Go specific
-tmp/
-run.sh
+# Binaries
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
+
+# Test binary
 *.test
+
+# Output of the go coverage tool
 *.out
+
+# Dependency directories
+vendor/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Go specific
+tmp/
+run.sh
 go.work
 
 # IDE specific files
@@ -20,7 +46,6 @@ go.work
 *.swo
 
 # Environment files
-.env
 .env.local
 
 # Byte-compiled / optimized / DLL files

@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/amirdashtii/go_auth/config"
 	"github.com/amirdashtii/go_auth/infrastructure/repository"
 	"github.com/amirdashtii/go_auth/internal/core/entities"
 	"github.com/amirdashtii/go_auth/internal/core/ports"
@@ -21,9 +22,9 @@ const (
 )
 
 type AuthService struct {
-	db               ports.UserRepository
+	db                ports.UserRepository
 	whitelistedTokens map[string]time.Time
-	mutex            sync.RWMutex
+	mutex             sync.RWMutex
 }
 
 func NewAuthService() *AuthService {
@@ -33,7 +34,7 @@ func NewAuthService() *AuthService {
 	}
 
 	return &AuthService{
-		db:               db,
+		db:                db,
 		whitelistedTokens: make(map[string]time.Time),
 	}
 }
@@ -47,11 +48,12 @@ func (s *AuthService) createToken(user *entities.User) (string, error) {
 		"exp":      time.Now().Add(tokenExpiration).Unix(),
 	})
 
-	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
-		return "", errors.New("JWT_SECRET not set in environment")
+	config, err := config.LoadConfig()
+	if err != nil {
+		log.Fatalf("Error loading config: %v", err)
 	}
 
+	jwtSecret := config.JWT.Secret
 	return token.SignedString([]byte(jwtSecret))
 }
 
