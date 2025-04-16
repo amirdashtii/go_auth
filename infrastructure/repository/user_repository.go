@@ -38,7 +38,7 @@ func (r *PGRepository) Create(user *entities.User) error {
 
 func (r *PGRepository) FindByEmail(email string) (*entities.User, error) {
 	query := `
-		SELECT id, email, password, is_active, is_admin, created_at, updated_at
+		SELECT id, first_name, last_name, email, password, is_active, is_admin, created_at, updated_at
 		FROM users
 		WHERE email = $1
 	`
@@ -46,6 +46,8 @@ func (r *PGRepository) FindByEmail(email string) (*entities.User, error) {
 	var user entities.User
 	err := r.db.QueryRow(query, email).Scan(
 		&user.ID,
+		&user.FirstName,
+		&user.LastName,
 		&user.Email,
 		&user.Password,
 		&user.IsActive,
@@ -63,7 +65,7 @@ func (r *PGRepository) FindByEmail(email string) (*entities.User, error) {
 
 func (r *PGRepository) FindByID(id uuid.UUID) (*entities.User, error) {
 	query := `
-		SELECT id, email, password, is_active, is_admin, created_at, updated_at
+		SELECT id, first_name, last_name, email, password, is_active, is_admin, created_at, updated_at
 		FROM users
 		WHERE id = $1
 	`
@@ -71,6 +73,8 @@ func (r *PGRepository) FindByID(id uuid.UUID) (*entities.User, error) {
 	var user entities.User	
 	err := r.db.QueryRow(query, id).Scan(
 		&user.ID,
+		&user.FirstName,
+		&user.LastName,
 		&user.Email,
 		&user.Password,
 		&user.IsActive,

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -46,9 +47,16 @@ func RunMigrations(db *sql.DB) error {
 			continue
 		}
 
+		// Extract version from filename
+		versionStr := strings.Split(file.Name(), "_")[0]
+		version, err := strconv.Atoi(versionStr)
+		if err != nil {
+			return fmt.Errorf("invalid migration version in filename %s: %v", file.Name(), err)
+		}
+
 		// Check if migration has already been applied
 		var count int
-		err = db.QueryRow("SELECT COUNT(*) FROM migrations WHERE name = $1", file.Name()).Scan(&count)
+		err = db.QueryRow("SELECT COUNT(*) FROM migrations WHERE version = $1", version).Scan(&count)
 		if err != nil {
 			return fmt.Errorf("failed to check migration status: %v", err)
 		}
@@ -70,7 +78,7 @@ func RunMigrations(db *sql.DB) error {
 		}
 
 		// Record migration in migrations table
-		_, err = db.Exec("INSERT INTO migrations (version, name) VALUES ($1, $2)", 1, file.Name())
+		_, err = db.Exec("INSERT INTO migrations (version, name) VALUES ($1, $2)", version, file.Name())
 		if err != nil {
 			return fmt.Errorf("failed to record migration %s: %v", file.Name(), err)
 		}
