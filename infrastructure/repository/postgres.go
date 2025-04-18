@@ -6,11 +6,27 @@ import (
 	"log"
 
 	"github.com/amirdashtii/go_auth/config"
-	"github.com/amirdashtii/go_auth/infrastructure/repository/migrations"
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
 type PGRepository struct {
 	db *sql.DB
+}
+
+func runMigrations(config *config.Config) {
+	m, err := migrate.New(
+		"file://migrations",
+		"postgres://" + config.DB.User + ":" + config.DB.Password + "@" + config.DB.Host + ":" + config.DB.Port + "/" + config.DB.Name + "?sslmode=disable",
+	)
+	if err != nil {
+		log.Fatalf("Failed to create migrate instance: %v", err)
+	}
+
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		log.Fatalf("Failed to run migrations: %v", err)
+	}
 }
 
 func NewPGRepository() (*PGRepository, error) {
@@ -18,6 +34,8 @@ func NewPGRepository() (*PGRepository, error) {
 	if err != nil {
 		log.Fatalf("Error loading config: %v", err)
 	}
+
+	runMigrations(config)
 
 	host := config.DB.Host
 	user := config.DB.User
@@ -33,10 +51,6 @@ func NewPGRepository() (*PGRepository, error) {
 
 	if err := db.Ping(); err != nil {
 		return nil, err
-	}
-
-	if err := migrations.RunMigrations(db); err != nil {
-		return nil, fmt.Errorf("failed to run migrations: %v", err)
 	}
 
 	return &PGRepository{db: db}, nil
