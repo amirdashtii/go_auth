@@ -1,6 +1,7 @@
 package service
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"log"
@@ -102,7 +103,10 @@ func (s *AuthService) Register(user *entities.User) error {
 func (s *AuthService) Login(email, password string) (string, error) {
 	user, err := s.db.FindByEmail(email)
 	if err != nil {
-		return "", errors.New("user not found")
+		if err == sql.ErrNoRows {
+			return "", errors.New("user not found")
+		}
+		return "", fmt.Errorf("failed to find user: %w", err)
 	}
 
 	if !user.IsActive {
@@ -181,6 +185,9 @@ func (s *AuthService) ValidateToken(token string) (*entities.User, error) {
 
 	user, err := s.db.FindByID(userID)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errors.New("user not found")
+		}
 		return nil, fmt.Errorf("failed to find user: %w", err)
 	}
 

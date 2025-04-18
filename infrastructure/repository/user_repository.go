@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"database/sql"
 	"errors"
 
 	"github.com/amirdashtii/go_auth/internal/core/entities"
@@ -10,7 +11,7 @@ import (
 
 func (r *PGRepository) Create(user *entities.User) error {
 	existingUser, err := r.FindByEmail(user.Email)
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		return err
 	}
 
@@ -19,12 +20,14 @@ func (r *PGRepository) Create(user *entities.User) error {
 	}
 
 	query := `
-		INSERT INTO users (id, email, password, is_active, is_admin, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO users (id, first_name, last_name, email, password, is_active, is_admin, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`
 
 	_, err = r.db.Exec(query,
 		user.ID,
+		user.FirstName,
+		user.LastName,
 		user.Email,
 		user.Password,
 		user.IsActive,
