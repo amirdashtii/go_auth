@@ -1,8 +1,10 @@
 package controller
 
 import (
+	"github.com/amirdashtii/go_auth/controller/middleware"
 	"github.com/amirdashtii/go_auth/internal/core/ports"
 	"github.com/amirdashtii/go_auth/internal/core/service"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -21,10 +23,11 @@ func NewUserHTTPHandler() *UserHTTPHandler {
 func NewUserRoutes(r *gin.Engine) {
 	h := NewUserHTTPHandler()
 
-	userGroup := r.Group("/user")
+	userGroup := r.Group("/users")
+	userGroup.Use(middleware.AuthMiddleware())
 	userGroup.GET("/profile", h.GetUserProfileHandler)
-	userGroup.PATCH("/profile", h.UpdateUserProfileHandler)
-	userGroup.PATCH("/change-password", h.ChangePasswordHandler)
+	userGroup.PUT("/profile", h.UpdateUserProfileHandler)
+	userGroup.POST("/change-password", h.ChangePasswordHandler)
 }
 
 

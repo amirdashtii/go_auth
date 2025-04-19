@@ -36,7 +36,7 @@ func (h *AuthHTTPHandler) RegisterHandler(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid request format",
+			"error":   "Invalid request format",
 			"details": err.Error(),
 		})
 		return
@@ -50,7 +50,7 @@ func (h *AuthHTTPHandler) RegisterHandler(c *gin.Context) {
 	err := h.svc.Register(&user)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Registration failed",
+			"error":   "Registration failed",
 			"details": err.Error(),
 		})
 		return
@@ -64,7 +64,7 @@ func (h *AuthHTTPHandler) LoginHandler(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid request format",
+			"error":   "Invalid request format",
 			"details": err.Error(),
 		})
 		return
@@ -75,10 +75,10 @@ func (h *AuthHTTPHandler) LoginHandler(c *gin.Context) {
 		return
 	}
 
-	token, err := h.svc.Login(req.Email, req.Password)
+	tokens, err := h.svc.Login(req.Email, req.Password)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Login failed",
+			"error":   "Login failed",
 			"details": err.Error(),
 		})
 		return
@@ -86,21 +86,23 @@ func (h *AuthHTTPHandler) LoginHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Login successful",
-		"token": token,
+		"tokens": gin.H{
+			"access_token":  tokens.AccessToken,
+			"refresh_token": tokens.RefreshToken,
+		},
 	})
 }
 
 func (h *AuthHTTPHandler) LogoutHandler(c *gin.Context) {
-	// Get token from Authorization header
+
 	token := c.GetHeader("Authorization")
 	if token == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Authorization token is required",
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Access token or refresh token is required",
 		})
 		return
 	}
 
-	// Remove "Bearer " prefix if present
 	if len(token) > 7 && token[:7] == "Bearer " {
 		token = token[7:]
 	}
@@ -108,7 +110,7 @@ func (h *AuthHTTPHandler) LogoutHandler(c *gin.Context) {
 	err := h.svc.Logout(token)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Logout failed",
+			"error":   "Logout failed",
 			"details": err.Error(),
 		})
 		return
@@ -120,24 +122,22 @@ func (h *AuthHTTPHandler) LogoutHandler(c *gin.Context) {
 }
 
 func (h *AuthHTTPHandler) RefreshTokenHandler(c *gin.Context) {
-	// Get token from Authorization header
-	token := c.GetHeader("Authorization")
-	if token == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Authorization token is required",
+	var req struct {
+		RefreshToken string `json:"refresh_token" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid request format",
+			"details": err.Error(),
 		})
 		return
 	}
 
-	// Remove "Bearer " prefix if present
-	if len(token) > 7 && token[:7] == "Bearer " {
-		token = token[7:]
-	}
-
-	newToken, err := h.svc.RefreshToken(token)
+	tokens, err := h.svc.RefreshToken(req.RefreshToken)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Token refresh failed",
+			"error":   "Token refresh failed",
 			"details": err.Error(),
 		})
 		return
@@ -145,6 +145,9 @@ func (h *AuthHTTPHandler) RefreshTokenHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Token refreshed successfully",
-		"token": newToken,
+		"tokens": gin.H{
+			"access_token":  tokens.AccessToken,
+			"refresh_token": tokens.RefreshToken,
+		},
 	})
 }

@@ -7,9 +7,9 @@ import (
 
 type AuthService interface {
 	Register(user *entities.User) error
-	Login(email, password string) (string, error)
+	Login(email, password string) (*entities.TokenPair, error)
 	Logout(token string) error
-	RefreshToken(token string) (string, error)
+	RefreshToken(refreshToken string) (*entities.TokenPair, error)
 	ValidateToken(token string) (*entities.User, error)
 }
 

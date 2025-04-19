@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"os"
 	"sync"
 	"time"
 
@@ -19,13 +18,15 @@ import (
 )
 
 const (
-	tokenExpiration = 24 * time.Hour
+	accessTokenExpiration  = 1 * time.Hour
+	refreshTokenExpiration = 7 * 24 * time.Hour
 )
 
 type AuthService struct {
-	db                ports.UserRepository
-	whitelistedTokens map[string]time.Time
-	mutex             sync.RWMutex
+	db                   ports.UserRepository
+	whitelistedTokens    map[string]time.Time
+	refreshTokensMapping map[string]string
+	mutex                sync.RWMutex
 }
 
 func NewAuthService() *AuthService {
@@ -35,49 +36,10 @@ func NewAuthService() *AuthService {
 	}
 
 	return &AuthService{
-		db:                db,
-		whitelistedTokens: make(map[string]time.Time),
+		db:                   db,
+		whitelistedTokens:    make(map[string]time.Time),
+		refreshTokensMapping: make(map[string]string),
 	}
-}
-
-// Helper function to create JWT token
-func (s *AuthService) createToken(user *entities.User) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id":  user.ID,
-		"email":    user.Email,
-		"is_admin": user.IsAdmin,
-		"exp":      time.Now().Add(tokenExpiration).Unix(),
-	})
-
-	config, err := config.LoadConfig()
-	if err != nil {
-		log.Fatalf("Error loading config: %v", err)
-	}
-
-	jwtSecret := config.JWT.Secret
-	return token.SignedString([]byte(jwtSecret))
-}
-
-// Helper function to add token to whitelist
-func (s *AuthService) addToWhitelist(token string) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	s.whitelistedTokens[token] = time.Now().Add(tokenExpiration)
-}
-
-// Helper function to remove token from whitelist
-func (s *AuthService) removeFromWhitelist(token string) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	delete(s.whitelistedTokens, token)
-}
-
-// Helper function to validate token in whitelist
-func (s *AuthService) isTokenWhitelisted(token string) (bool, time.Time) {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
-	expTime, exists := s.whitelistedTokens[token]
-	return exists, expTime
 }
 
 func (s *AuthService) Register(user *entities.User) error {
@@ -100,69 +62,129 @@ func (s *AuthService) Register(user *entities.User) error {
 	return nil
 }
 
-func (s *AuthService) Login(email, password string) (string, error) {
+func (s *AuthService) Login(email, password string) (*entities.TokenPair, error) {
 	user, err := s.db.FindByEmail(email)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return "", errors.New("user not found")
+			return nil, errors.New("user not found")
 		}
-		return "", fmt.Errorf("failed to find user: %w", err)
-	}
-
-	if !user.IsActive {
-		return "", errors.New("user account is not active")
+		return nil, fmt.Errorf("failed to find user: %w", err)
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
-		return "", errors.New("invalid password")
+		return nil, errors.New("invalid password")
 	}
 
-	tokenString, err := s.createToken(user)
+	if !user.IsActive {
+		return nil, errors.New("user account is not active")
+	}
+
+	tokenPair, err := s.createTokenPair(user)
 	if err != nil {
-		return "", fmt.Errorf("failed to create token: %w", err)
+		return nil, fmt.Errorf("failed to create token pair: %w", err)
 	}
 
-	s.addToWhitelist(tokenString)
-	return tokenString, nil
+	return tokenPair, nil
 }
 
-func (s *AuthService) Logout(token string) error {
-	s.removeFromWhitelist(token)
+func (s *AuthService) Logout(accessToken string) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	if _, exists := s.whitelistedTokens[accessToken]; !exists {
+		return errors.New("token is not whitelisted")
+	}
+
+	delete(s.whitelistedTokens, accessToken)
+
+	for refreshToken, currentAccessToken := range s.refreshTokensMapping {
+		if currentAccessToken == accessToken {
+			delete(s.refreshTokensMapping, refreshToken)
+			break
+		}
+	}
+
 	return nil
 }
 
-func (s *AuthService) RefreshToken(token string) (string, error) {
-	user, err := s.ValidateToken(token)
-	if err != nil {
-		return "", err
-	}
+func (s *AuthService) RefreshToken(refreshToken string) (*entities.TokenPair, error) {
 
-	newToken, err := s.createToken(user)
+	user, err := s.parseAndValidateToken(refreshToken, "refresh")
 	if err != nil {
-		return "", fmt.Errorf("failed to create new token: %w", err)
+		return nil, fmt.Errorf("invalid refresh token: %w", err)
 	}
 
 	s.mutex.Lock()
-	delete(s.whitelistedTokens, token)
-	s.whitelistedTokens[newToken] = time.Now().Add(tokenExpiration)
+	accessToken, exists := s.refreshTokensMapping[refreshToken]
+	if !exists {
+		s.mutex.Unlock()
+		return nil, errors.New("refresh token is not valid")
+	}
+	
+	delete(s.whitelistedTokens, accessToken)
+	delete(s.refreshTokensMapping, refreshToken)
 	s.mutex.Unlock()
 
-	return newToken, nil
+	tokenPair, err := s.createTokenPair(user)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create new token pair: %w", err)
+	}
+
+	return tokenPair, nil
 }
 
-func (s *AuthService) ValidateToken(token string) (*entities.User, error) {
-	isWhitelisted, expTime := s.isTokenWhitelisted(token)
-	if !isWhitelisted {
-		return nil, errors.New("token is not whitelisted")
+func (s *AuthService) createTokenPair(user *entities.User) (*entities.TokenPair, error) {
+	accessToken, err := s.createToken(user, accessTokenExpiration, "access")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create access token: %w", err)
 	}
 
-	if time.Now().After(expTime) {
-		s.removeFromWhitelist(token)
-		return nil, errors.New("token is expired")
+	refreshToken, err := s.createToken(user, refreshTokenExpiration, "refresh")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create refresh token: %w", err)
 	}
+
+	s.mutex.Lock()
+	s.whitelistedTokens[accessToken] = time.Now().Add(accessTokenExpiration)
+	s.refreshTokensMapping[refreshToken] = accessToken
+	s.mutex.Unlock()
+
+	return &entities.TokenPair{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}, nil
+}
+
+func (s *AuthService) createToken(user *entities.User, expiration time.Duration, tokenType string) (string, error) {
+	claims := jwt.MapClaims{
+		"user_id":    user.ID,
+		"is_admin":   user.IsAdmin,
+		"token_type": tokenType,
+		"exp":        time.Now().Add(expiration).Unix(),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	config, err := config.LoadConfig()
+	if err != nil {
+		log.Fatalf("Error loading config: %v", err)
+	}
+
+	jwtSecret := config.JWT.Secret
+	return token.SignedString([]byte(jwtSecret))
+}
+
+func (s *AuthService) parseAndValidateToken(token string, expectedType string) (*entities.User, error) {
+
+	config, err := config.LoadConfig()
+	if err != nil {
+		return nil, fmt.Errorf("error loading config: %w", err)
+	}
+
+	jwtSecret := config.JWT.Secret
 
 	parsedToken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
-		return []byte(os.Getenv("JWT_SECRET")), nil
+		return []byte(jwtSecret), nil
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse token: %w", err)
@@ -173,14 +195,36 @@ func (s *AuthService) ValidateToken(token string) (*entities.User, error) {
 		return nil, errors.New("invalid token claims")
 	}
 
-	userIDStr, ok := claims["user_id"].(string)
+	tokenType, ok := claims["token_type"].(string)
+	if !ok || tokenType != expectedType {
+		return nil, fmt.Errorf("invalid token type, expected %s", expectedType)
+	}
+
+	userIDValue, ok := claims["user_id"]
 	if !ok {
 		return nil, errors.New("invalid user ID in token")
 	}
 
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse user ID: %w", err)
+	var userID uuid.UUID
+	switch v := userIDValue.(type) {
+	case string:
+		var err error
+		userID, err = uuid.Parse(v)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse user ID: %w", err)
+		}
+	case map[string]interface{}:
+		if uuidStr, ok := v["String"].(string); ok {
+			var err error
+			userID, err = uuid.Parse(uuidStr)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse user ID: %w", err)
+			}
+		} else {
+			return nil, errors.New("invalid user ID format in token")
+		}
+	default:
+		return nil, errors.New("unexpected user ID format in token")
 	}
 
 	user, err := s.db.FindByID(userID)
@@ -196,4 +240,24 @@ func (s *AuthService) ValidateToken(token string) (*entities.User, error) {
 	}
 
 	return user, nil
+}
+
+func (s *AuthService) ValidateToken(token string) (*entities.User, error) {
+
+	s.mutex.RLock()
+	expTime, isWhitelisted := s.whitelistedTokens[token]
+	s.mutex.RUnlock()
+
+	if !isWhitelisted {
+		return nil, errors.New("token is not whitelisted")
+	}
+
+	if time.Now().After(expTime) {
+		s.mutex.Lock()
+		delete(s.whitelistedTokens, token)
+		s.mutex.Unlock()
+		return nil, errors.New("token is expired")
+	}
+
+	return s.parseAndValidateToken(token, "access")
 }
