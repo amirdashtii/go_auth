@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"sync"
 	"time"
 
 	"github.com/amirdashtii/go_auth/config"
@@ -23,10 +22,8 @@ const (
 )
 
 type AuthService struct {
-	db                   ports.UserRepository
-	whitelistedTokens    map[string]time.Time
-	refreshTokensMapping map[string]string
-	mutex                sync.RWMutex
+	db    ports.UserRepository
+	redis ports.InMemoryRespositoryContracts
 }
 
 func NewAuthService() *AuthService {
@@ -34,11 +31,14 @@ func NewAuthService() *AuthService {
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
+	redisRepo, err := repository.NewRedisRepository()
+	if err != nil {
+		log.Fatalf("Failed to initialize redis: %v", err)
+	}
 
 	return &AuthService{
-		db:                   db,
-		whitelistedTokens:    make(map[string]time.Time),
-		refreshTokensMapping: make(map[string]string),
+		db:    db,
+		redis: redisRepo,
 	}
 }
 
@@ -87,21 +87,16 @@ func (s *AuthService) Login(email, password string) (*entities.TokenPair, error)
 	return tokenPair, nil
 }
 
-func (s *AuthService) Logout(accessToken string) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+func (s *AuthService) Logout(userID string) error {
 
-	if _, exists := s.whitelistedTokens[accessToken]; !exists {
-		return errors.New("token is not whitelisted")
+	err := s.redis.RemoveToken(userID + ":access")
+	if err != nil {
+		return err
 	}
 
-	delete(s.whitelistedTokens, accessToken)
-
-	for refreshToken, currentAccessToken := range s.refreshTokensMapping {
-		if currentAccessToken == accessToken {
-			delete(s.refreshTokensMapping, refreshToken)
-			break
-		}
+	err = s.redis.RemoveToken(userID + ":refresh")
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -114,16 +109,16 @@ func (s *AuthService) RefreshToken(refreshToken string) (*entities.TokenPair, er
 		return nil, fmt.Errorf("invalid refresh token: %w", err)
 	}
 
-	s.mutex.Lock()
-	accessToken, exists := s.refreshTokensMapping[refreshToken]
-	if !exists {
-		s.mutex.Unlock()
-		return nil, errors.New("refresh token is not valid")
+	storedToken, err := s.redis.FindToken(user.ID.String() + ":refresh")
+	if err != nil {
+		return nil, errors.New("failed to find stored token")
 	}
-	
-	delete(s.whitelistedTokens, accessToken)
-	delete(s.refreshTokensMapping, refreshToken)
-	s.mutex.Unlock()
+
+	if storedToken != refreshToken {
+		return nil, errors.New("refresh token does not match stored token")
+	}
+
+	s.Logout(user.ID.String())
 
 	tokenPair, err := s.createTokenPair(user)
 	if err != nil {
@@ -144,10 +139,15 @@ func (s *AuthService) createTokenPair(user *entities.User) (*entities.TokenPair,
 		return nil, fmt.Errorf("failed to create refresh token: %w", err)
 	}
 
-	s.mutex.Lock()
-	s.whitelistedTokens[accessToken] = time.Now().Add(accessTokenExpiration)
-	s.refreshTokensMapping[refreshToken] = accessToken
-	s.mutex.Unlock()
+	err = s.redis.AddToken(user.ID.String()+":access", accessToken, accessTokenExpiration)
+	if err != nil {
+		return &entities.TokenPair{}, fmt.Errorf("failed to store access token in redis: %w", err)
+	}
+
+	err = s.redis.AddToken(user.ID.String()+":refresh", refreshToken, refreshTokenExpiration)
+	if err != nil {
+		return &entities.TokenPair{}, fmt.Errorf("failed to store refresh token in redis: %w", err)
+	}
 
 	return &entities.TokenPair{
 		AccessToken:  accessToken,
@@ -242,22 +242,16 @@ func (s *AuthService) parseAndValidateToken(token string, expectedType string) (
 	return user, nil
 }
 
-func (s *AuthService) ValidateToken(token string) (*entities.User, error) {
+func (s *AuthService) ValidateToken(userID, token string) error {
 
-	s.mutex.RLock()
-	expTime, isWhitelisted := s.whitelistedTokens[token]
-	s.mutex.RUnlock()
-
-	if !isWhitelisted {
-		return nil, errors.New("token is not whitelisted")
+	storedToken, err := s.redis.FindToken(userID + ":access")
+	if err != nil {
+		return errors.New("failed to find token")
 	}
 
-	if time.Now().After(expTime) {
-		s.mutex.Lock()
-		delete(s.whitelistedTokens, token)
-		s.mutex.Unlock()
-		return nil, errors.New("token is expired")
+	if storedToken != token {
+		return errors.New("token does not match")
 	}
 
-	return s.parseAndValidateToken(token, "access")
+	return nil
 }

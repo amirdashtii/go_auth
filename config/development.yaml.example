@@ -10,3 +10,8 @@ jwt:
 
 server:
   port: "8080" 
+
+redis:
+  Addr: your_redis_addr
+  Password: your_redis_password
+  DB: your_redis_db

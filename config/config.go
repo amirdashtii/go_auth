@@ -14,6 +14,11 @@ type Config struct {
 		Password string
 		Name     string
 	}
+	Redis struct {
+		Addr     string
+		Password string
+		DB       int
+	}
 	JWT struct {
 		Secret string
 	}
@@ -33,6 +38,10 @@ func LoadConfig() (*Config, error) {
 	v.SetDefault("db.password", "go_auth")
 	v.SetDefault("db.name", "go_auth")
 	v.SetDefault("jwt.secret", "h13dpx8nFiWwLbhHuOEBLWhA6kfYwoP9UNU5MQlgoZQ0")
+	v.SetDefault("redis.Addr", "localhost:6379")
+	v.SetDefault("redis.Password", "")
+	v.SetDefault("redis.DB", 0)
+	
 
 	// Read from YAML file
 	v.SetConfigName("development")

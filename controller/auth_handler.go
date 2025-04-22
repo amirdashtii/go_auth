@@ -3,6 +3,7 @@ package controller
 import (
 	"net/http"
 
+	"github.com/amirdashtii/go_auth/controller/middleware"
 	"github.com/amirdashtii/go_auth/controller/validators"
 	"github.com/amirdashtii/go_auth/internal/core/entities"
 	"github.com/amirdashtii/go_auth/internal/core/ports"
@@ -27,7 +28,7 @@ func NewAuthRoutes(r *gin.Engine) {
 	authGroup := r.Group("/auth")
 	authGroup.POST("/register", h.RegisterHandler)
 	authGroup.POST("/login", h.LoginHandler)
-	authGroup.POST("/logout", h.LogoutHandler)
+	authGroup.POST("/logout", middleware.AuthMiddleware(), h.LogoutHandler)
 	authGroup.POST("/refresh-token", h.RefreshTokenHandler)
 }
 
@@ -95,19 +96,23 @@ func (h *AuthHTTPHandler) LoginHandler(c *gin.Context) {
 
 func (h *AuthHTTPHandler) LogoutHandler(c *gin.Context) {
 
-	token := c.GetHeader("Authorization")
-	if token == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Access token or refresh token is required",
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "User ID not found",
 		})
 		return
 	}
 
-	if len(token) > 7 && token[:7] == "Bearer " {
-		token = token[7:]
+	userIDStr, ok := userID.(string)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Invalid user ID type",
+		})
+		return
 	}
 
-	err := h.svc.Logout(token)
+	err := h.svc.Logout(userIDStr)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error":   "Logout failed",
