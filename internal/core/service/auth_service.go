@@ -22,22 +22,24 @@ const (
 )
 
 type AuthService struct {
-	db    ports.UserRepository
+	db    ports.AuthRepository
 	redis ports.InMemoryRespositoryContracts
 }
 
 func NewAuthService() *AuthService {
-	db, err := repository.NewPGRepository()
+	dbRepo, err := repository.NewPGRepository()
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
+	db := dbRepo.DB()
+	authRepo := repository.NewPGAuthRepository(db)
 	redisRepo, err := repository.NewRedisRepository()
 	if err != nil {
 		log.Fatalf("Failed to initialize redis: %v", err)
 	}
 
 	return &AuthService{
-		db:    db,
+		db:    authRepo,
 		redis: redisRepo,
 	}
 }
@@ -227,7 +229,7 @@ func (s *AuthService) parseAndValidateToken(token string, expectedType string) (
 		return nil, errors.New("unexpected user ID format in token")
 	}
 
-	user, err := s.db.FindByID(userID)
+	user, err := s.db.FindAuthUserByID(userID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, errors.New("user not found")

@@ -12,20 +12,25 @@ type UserService struct {
 }
 
 func NewUserService() *UserService {
-	db, err := repository.NewPGRepository()
+	dbRepo, err := repository.NewPGRepository()
 	if err != nil {
-		// Handle the error appropriately, e.g., log it or return it
 		panic(err)
 	}
-
+	db := dbRepo.DB()
+	userRepo := repository.NewPGUserRepository(db)
 	return &UserService{
-		db: db,
+		db: userRepo,
 	}
 }
 
-func (s *UserService) GetProfile(userID uuid.UUID) (*entities.User, error) {
-	// TODO: Implement get profile logic
-	return nil, nil
+func (s *UserService) GetOwnProfile(userID string) (*entities.User, error) {
+	uuid := uuid.Must(uuid.Parse(userID))
+
+	user, err := s.db.FindUserOwnByID(uuid)
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
 }
 
 func (s *UserService) UpdateProfile(userID uuid.UUID, user *entities.User) error {
@@ -37,5 +42,3 @@ func (s *UserService) ChangePassword(userID uuid.UUID, oldPassword, newPassword 
 	// TODO: Implement change password logic
 	return nil
 }
-
- 

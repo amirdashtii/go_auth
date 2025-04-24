@@ -8,18 +8,18 @@ import (
 )
 
 type AdminService struct {
-	db ports.UserRepository
+	db ports.AdminRepository
 }
 
 func NewAdminService() *AdminService {
-	db, err := repository.NewPGRepository()
+	dbRepo, err := repository.NewPGRepository()
 	if err != nil {
-		// Handle the error appropriately, e.g., log it or return it
 		panic(err)
 	}
-
+	db := dbRepo.DB()
+	adminRepo := repository.NewPGAdminRepository(db)
 	return &AdminService{
-		db: db,
+		db: adminRepo,
 	}
 }
 
@@ -28,14 +28,14 @@ func (s *AdminService) GetUsers() ([]*entities.User, error) {
 	return nil, nil
 }
 
-func (s *AdminService) GetUserByID(userID uuid.UUID) (*entities.User, error) {
+func (s *AdminService) AdminGetUserByID(userID uuid.UUID) (*entities.User, error) {
 	// TODO: Implement get user by ID logic
 	return nil, nil
 }
 
-func (s *AdminService) UpdateUser(userID uuid.UUID, user *entities.User) error {
+func (s *AdminService) AdminUpdateUser(userID uuid.UUID, user *entities.User) error {
 	// TODO: Implement update user logic
-	return nil
+	return s.db.AdminUpdateUser(user)
 }
 
 func (s *AdminService) PromoteToAdmin(userID uuid.UUID) error {
@@ -53,9 +53,9 @@ func (s *AdminService) ActivateUser(userID uuid.UUID) error {
 	return nil
 }
 
-func (s *AdminService) DeleteUser(userID uuid.UUID) error {
+func (s *AdminService) AdminDeleteUser(userID uuid.UUID) error {
 	// TODO: Implement delete user logic
-	return nil
+	return s.db.AdminDeleteUser(userID)
 }
 
 func (s *AdminService) FindActiveUsers() ([]*entities.User, error) {

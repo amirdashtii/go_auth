@@ -10,23 +10,23 @@ type AuthService interface {
 	Login(email, password string) (*entities.TokenPair, error)
 	Logout(userID string) error
 	RefreshToken(refreshToken string) (*entities.TokenPair, error)
-	ValidateToken(userID,token string) (error)
+	ValidateToken(userID, token string) error
 }
 
 type UserService interface {
-	GetProfile(userID uuid.UUID) (*entities.User, error)
+	GetOwnProfile(userID string) (*entities.User, error)
 	UpdateProfile(userID uuid.UUID, user *entities.User) error
 	ChangePassword(userID uuid.UUID, oldPassword, newPassword string) error
 }
 
 type AdminService interface {
 	GetUsers() ([]*entities.User, error)
-	GetUserByID(userID uuid.UUID) (*entities.User, error)
-	UpdateUser(userID uuid.UUID, user *entities.User) error
+	AdminGetUserByID(userID uuid.UUID) (*entities.User, error)
+	AdminUpdateUser(userID uuid.UUID, user *entities.User) error
 	PromoteToAdmin(userID uuid.UUID) error
 	DeactivateUser(userID uuid.UUID) error
 	ActivateUser(userID uuid.UUID) error
-	DeleteUser(userID uuid.UUID) error
+	AdminDeleteUser(userID uuid.UUID) error
 	FindActiveUsers() ([]*entities.User, error)
 	FindAdmins() ([]*entities.User, error)
 }

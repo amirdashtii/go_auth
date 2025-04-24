@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/amirdashtii/go_auth/controller/middleware"
@@ -33,6 +32,7 @@ func NewUserRoutes(r *gin.Engine) {
 }
 
 func (h *UserHTTPHandler) GetUserProfileHandler(c *gin.Context) {
+	// TODO: Implement user profile retrieval logic
 	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
@@ -47,9 +47,16 @@ func (h *UserHTTPHandler) GetUserProfileHandler(c *gin.Context) {
 		})
 		return
 	}
-	fmt.Println("------------------")
-	fmt.Println(userIDStr)	
-	// TODO: Implement user profile retrieval logic
+
+	userProfile, err := h.svc.GetOwnProfile(userIDStr)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to retrieve user profile",
+		})
+		return
+	}
+	c.JSON(http.StatusOK, userProfile)
 }
 func (h *UserHTTPHandler) UpdateUserProfileHandler(c *gin.Context) {
 	// TODO: Implement user profile update logic

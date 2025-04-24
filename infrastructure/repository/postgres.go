@@ -18,7 +18,7 @@ type PGRepository struct {
 func runMigrations(config *config.Config) {
 	m, err := migrate.New(
 		"file://migrations",
-		"postgres://" + config.DB.User + ":" + config.DB.Password + "@" + config.DB.Host + ":" + config.DB.Port + "/" + config.DB.Name + "?sslmode=disable",
+		"postgres://"+config.DB.User+":"+config.DB.Password+"@"+config.DB.Host+":"+config.DB.Port+"/"+config.DB.Name+"?sslmode=disable",
 	)
 	if err != nil {
 		log.Fatalf("Failed to create migrate instance: %v", err)
@@ -54,4 +54,8 @@ func NewPGRepository() (*PGRepository, error) {
 	}
 
 	return &PGRepository{db: db}, nil
+}
+
+func (r *PGRepository) DB() *sql.DB {
+	return r.db
 }
