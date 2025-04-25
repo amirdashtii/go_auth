@@ -71,6 +71,10 @@ func (s *AuthService) Login(email, password string) (*entities.TokenPair, error)
 		}
 		return nil, fmt.Errorf("failed to find user: %w", err)
 	}
+	if !user.DeletedAt.IsZero() {
+		fmt.Println("user not found")
+		return nil, fmt.Errorf("user not found")
+	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
 		return nil, fmt.Errorf("invalid password: %w", err)
@@ -234,6 +238,9 @@ func (s *AuthService) parseAndValidateToken(token string, expectedType string) (
 			return nil, fmt.Errorf("user not found")
 		}
 		return nil, fmt.Errorf("failed to find user: %w", err)
+	}
+	if !user.DeletedAt.IsZero() {
+		return nil, fmt.Errorf("user not found")
 	}
 
 	if !user.IsActive {

@@ -17,6 +17,7 @@ type UserService interface {
 	GetProfile(userID uuid.UUID) (*entities.User, error)
 	UpdateProfile(userID uuid.UUID, user *entities.User) error
 	ChangePassword(userID uuid.UUID, oldPassword, newPassword string) error
+	DeleteProfile(userID uuid.UUID) error
 }
 
 type AdminService interface {

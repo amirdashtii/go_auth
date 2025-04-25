@@ -29,7 +29,10 @@ func NewUserService() *UserService {
 func (s *UserService) GetProfile(userID uuid.UUID) (*entities.User, error) {
 	user, err := s.db.FindUserByID(userID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("user not found: %w", err)
+	}
+	if !user.DeletedAt.IsZero() {
+		return nil, fmt.Errorf("user not found")
 	}
 	return user, nil
 }
@@ -47,6 +50,10 @@ func (s *UserService) ChangePassword(userID uuid.UUID, oldPassword, newPassword 
 		return fmt.Errorf("user not found: %w", err)
 	}
 
+	if !currentUser.DeletedAt.IsZero() {
+		return fmt.Errorf("user not found")
+	}
+
 	if err := bcrypt.CompareHashAndPassword([]byte(currentUser.Password), []byte(oldPassword)); err != nil {
 		return fmt.Errorf("current password is incorrect: %w", err)
 	}
@@ -60,4 +67,8 @@ func (s *UserService) ChangePassword(userID uuid.UUID, oldPassword, newPassword 
 	user.ID = userID
 	user.Password = string(hashedNewPassword)
 	return s.db.Update(user)
+}
+
+func (s *UserService) DeleteProfile(userID uuid.UUID) error {
+	return s.db.Delete(userID)
 }

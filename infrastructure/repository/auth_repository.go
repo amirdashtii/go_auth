@@ -49,7 +49,7 @@ func (r *PGAuthRepository) Create(user *entities.User) error {
 
 func (r *PGAuthRepository) FindByEmail(email string) (*entities.User, error) {
 	query := `
-	SELECT id, first_name, last_name, email, password, is_active, is_admin, created_at, updated_at
+	SELECT id, first_name, last_name, email, password, is_active, is_admin, created_at, updated_at, deleted_at
 	FROM users
 	WHERE email = $1
 `
@@ -65,6 +65,7 @@ func (r *PGAuthRepository) FindByEmail(email string) (*entities.User, error) {
 		&user.IsAdmin,
 		&user.CreatedAt,
 		&user.UpdatedAt,
+		&user.DeletedAt,
 	)
 
 	if err != nil {
@@ -76,7 +77,7 @@ func (r *PGAuthRepository) FindByEmail(email string) (*entities.User, error) {
 
 func (r *PGAuthRepository) FindAuthUserByID(id uuid.UUID) (*entities.User, error) {
 	query := `
-	SELECT id, first_name, last_name, email, password, is_active, is_admin, created_at, updated_at
+	SELECT id, first_name, last_name, email, password, is_active, is_admin, created_at, updated_at, deleted_at
 	FROM users
 	WHERE id = $1
 	`
@@ -92,6 +93,7 @@ func (r *PGAuthRepository) FindAuthUserByID(id uuid.UUID) (*entities.User, error
 		&user.IsAdmin,
 		&user.CreatedAt,
 		&user.UpdatedAt,
+		&user.DeletedAt,
 	)
 
 	if err != nil {

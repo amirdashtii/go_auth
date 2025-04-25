@@ -31,6 +31,7 @@ func NewUserRoutes(r *gin.Engine) {
 	userGroup.GET("/", h.GetUserProfileHandler)
 	userGroup.PUT("/", h.UpdateUserProfileHandler)
 	userGroup.PUT("/change-password", h.ChangePasswordHandler)
+	userGroup.DELETE("/", h.DeleteUserProfileHandler)
 }
 
 func (h *UserHTTPHandler) GetUserProfileHandler(c *gin.Context) {
@@ -172,4 +173,39 @@ func (h *UserHTTPHandler) ChangePasswordHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Password changed successfully"})
+}
+
+func (h *UserHTTPHandler) DeleteUserProfileHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "User ID not found",
+		})
+		return
+	}
+	userIDStr, ok := userID.(string)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Invalid user ID type",
+		})
+		return
+	}
+	uuid, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid user ID format",
+		})
+		return
+	}
+
+	err = h.svc.DeleteProfile(uuid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to delete profile",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Profile deleted successfully"})
 }
