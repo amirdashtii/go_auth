@@ -2,7 +2,6 @@ package service
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -68,17 +67,17 @@ func (s *AuthService) Login(email, password string) (*entities.TokenPair, error)
 	user, err := s.db.FindByEmail(email)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, errors.New("user not found")
+			return nil, fmt.Errorf("user not found: %w", err)
 		}
 		return nil, fmt.Errorf("failed to find user: %w", err)
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
-		return nil, errors.New("invalid password")
+		return nil, fmt.Errorf("invalid password: %w", err)
 	}
 
 	if !user.IsActive {
-		return nil, errors.New("user account is not active")
+		return nil, fmt.Errorf("user account is not active: %w", err)
 	}
 
 	tokenPair, err := s.createTokenPair(user)
@@ -113,11 +112,11 @@ func (s *AuthService) RefreshToken(refreshToken string) (*entities.TokenPair, er
 
 	storedToken, err := s.redis.FindToken(user.ID.String() + ":refresh")
 	if err != nil {
-		return nil, errors.New("failed to find stored token")
+		return nil, fmt.Errorf("failed to find stored token: %w", err)
 	}
 
 	if storedToken != refreshToken {
-		return nil, errors.New("refresh token does not match stored token")
+		return nil, fmt.Errorf("refresh token does not match stored token: %w", err)
 	}
 
 	s.Logout(user.ID.String())
@@ -194,7 +193,7 @@ func (s *AuthService) parseAndValidateToken(token string, expectedType string) (
 
 	claims, ok := parsedToken.Claims.(jwt.MapClaims)
 	if !ok {
-		return nil, errors.New("invalid token claims")
+		return nil, fmt.Errorf("invalid token claims")
 	}
 
 	tokenType, ok := claims["token_type"].(string)
@@ -204,7 +203,7 @@ func (s *AuthService) parseAndValidateToken(token string, expectedType string) (
 
 	userIDValue, ok := claims["user_id"]
 	if !ok {
-		return nil, errors.New("invalid user ID in token")
+		return nil, fmt.Errorf("invalid user ID in token")
 	}
 
 	var userID uuid.UUID
@@ -223,22 +222,22 @@ func (s *AuthService) parseAndValidateToken(token string, expectedType string) (
 				return nil, fmt.Errorf("failed to parse user ID: %w", err)
 			}
 		} else {
-			return nil, errors.New("invalid user ID format in token")
+			return nil, fmt.Errorf("invalid user ID format in token")
 		}
 	default:
-		return nil, errors.New("unexpected user ID format in token")
+		return nil, fmt.Errorf("unexpected user ID format in token")
 	}
 
 	user, err := s.db.FindAuthUserByID(userID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, errors.New("user not found")
+			return nil, fmt.Errorf("user not found")
 		}
 		return nil, fmt.Errorf("failed to find user: %w", err)
 	}
 
 	if !user.IsActive {
-		return nil, errors.New("user account is not active")
+		return nil, fmt.Errorf("user account is not active")
 	}
 
 	return user, nil
@@ -248,11 +247,11 @@ func (s *AuthService) ValidateToken(userID, token string) error {
 
 	storedToken, err := s.redis.FindToken(userID + ":access")
 	if err != nil {
-		return errors.New("failed to find token")
+		return fmt.Errorf("failed to find token: %w", err)
 	}
 
 	if storedToken != token {
-		return errors.New("token does not match")
+		return fmt.Errorf("token does not match")
 	}
 
 	return nil
