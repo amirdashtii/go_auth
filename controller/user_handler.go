@@ -30,7 +30,7 @@ func NewUserRoutes(r *gin.Engine) {
 	userGroup.Use(middleware.AuthMiddleware())
 	userGroup.GET("/", h.GetUserProfileHandler)
 	userGroup.PUT("/", h.UpdateUserProfileHandler)
-	userGroup.POST("/change-password", h.ChangePasswordHandler)
+	userGroup.PUT("/change-password", h.ChangePasswordHandler)
 }
 
 func (h *UserHTTPHandler) GetUserProfileHandler(c *gin.Context) {
@@ -129,5 +129,47 @@ func (h *UserHTTPHandler) UpdateUserProfileHandler(c *gin.Context) {
 }
 
 func (h *UserHTTPHandler) ChangePasswordHandler(c *gin.Context) {
-	// TODO: Implement password change logic with old password validation
+	var req ChangePasswordRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid request format",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "User ID not found",
+		})
+		return
+	}
+	userIDStr, ok := userID.(string)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Invalid user ID type",
+		})
+		return
+	}
+
+	uuid, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid user ID format",
+		})
+		return
+	}
+
+	err = h.svc.ChangePassword(uuid, req.OldPassword, req.NewPassword)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Failed to change password",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Password changed successfully"})
 }

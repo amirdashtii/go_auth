@@ -64,9 +64,10 @@ func (r *PGUserRepository) Update(user *entities.User) error {
 		args = append(args, user.Email)
 		i++
 	}
-
-	if len(args) == 0 {
-		return nil
+	if user.Password != "" {
+		query += "password = $" + fmt.Sprint(i) + ", "
+		args = append(args, user.Password)
+		i++
 	}
 
 	query += "updated_at = NOW()"
