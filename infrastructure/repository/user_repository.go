@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"fmt"
 
 	"github.com/amirdashtii/go_auth/internal/core/entities"
 	"github.com/amirdashtii/go_auth/internal/core/ports"
@@ -16,7 +17,7 @@ func NewPGUserRepository(db *sql.DB) ports.UserRepository {
 	return &PGUserRepository{db: db}
 }
 
-func (r *PGUserRepository) FindUserOwnByID(id uuid.UUID) (*entities.User, error) {
+func (r *PGUserRepository) FindUserByID(id uuid.UUID) (*entities.User, error) {
 	query := `
 	SELECT id, first_name, last_name, email, password, is_active, is_admin, created_at, updated_at
 	FROM users
@@ -44,7 +45,37 @@ func (r *PGUserRepository) FindUserOwnByID(id uuid.UUID) (*entities.User, error)
 }
 
 func (r *PGUserRepository) Update(user *entities.User) error {
-	return nil
+	query := "UPDATE users SET "
+	args := []interface{}{}
+	i := 1
+
+	if user.FirstName != "" {
+		query += "first_name = $" + fmt.Sprint(i) + ", "
+		args = append(args, user.FirstName)
+		i++
+	}
+	if user.LastName != "" {
+		query += "last_name = $" + fmt.Sprint(i) + ", "
+		args = append(args, user.LastName)
+		i++
+	}
+	if user.Email != "" {
+		query += "email = $" + fmt.Sprint(i) + ", "
+		args = append(args, user.Email)
+		i++
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query += "updated_at = NOW()"
+
+	query += " WHERE id = $" + fmt.Sprint(i)
+	args = append(args, user.ID)
+
+	_, err := r.db.Exec(query, args...)
+	return err
 }
 
 func (r *PGUserRepository) Delete(id uuid.UUID) error {

@@ -13,7 +13,7 @@ type AuthRepository interface {
 	FindAuthUserByID(id uuid.UUID) (*entities.User, error)
 }
 type UserRepository interface {
-	FindUserOwnByID(id uuid.UUID) (*entities.User, error)
+	FindUserByID(id uuid.UUID) (*entities.User, error)
 	Update(user *entities.User) error
 	Delete(id uuid.UUID) error
 }

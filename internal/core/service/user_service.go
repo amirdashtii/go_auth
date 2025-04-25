@@ -23,10 +23,8 @@ func NewUserService() *UserService {
 	}
 }
 
-func (s *UserService) GetOwnProfile(userID string) (*entities.User, error) {
-	uuid := uuid.Must(uuid.Parse(userID))
-
-	user, err := s.db.FindUserOwnByID(uuid)
+func (s *UserService) GetProfile(userID uuid.UUID) (*entities.User, error) {
+	user, err := s.db.FindUserByID(userID)
 	if err != nil {
 		return nil, err
 	}
@@ -34,8 +32,9 @@ func (s *UserService) GetOwnProfile(userID string) (*entities.User, error) {
 }
 
 func (s *UserService) UpdateProfile(userID uuid.UUID, user *entities.User) error {
-	// TODO: Implement update profile logic
-	return nil
+	user.ID = userID
+
+	return s.db.Update(user)
 }
 
 func (s *UserService) ChangePassword(userID uuid.UUID, oldPassword, newPassword string) error {

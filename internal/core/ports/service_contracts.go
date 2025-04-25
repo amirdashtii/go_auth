@@ -14,7 +14,7 @@ type AuthService interface {
 }
 
 type UserService interface {
-	GetOwnProfile(userID string) (*entities.User, error)
+	GetProfile(userID uuid.UUID) (*entities.User, error)
 	UpdateProfile(userID uuid.UUID, user *entities.User) error
 	ChangePassword(userID uuid.UUID, oldPassword, newPassword string) error
 }
