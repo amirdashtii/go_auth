@@ -33,14 +33,19 @@ func NewAuthRoutes(r *gin.Engine) {
 }
 
 func (h *AuthHTTPHandler) RegisterHandler(c *gin.Context) {
-	var user entities.User
+	var req RegisterRequest
 
-	if err := c.ShouldBindJSON(&user); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Invalid request format",
 			"details": err.Error(),
 		})
 		return
+	}
+
+	user := entities.User{
+		Email:     req.Email,
+		Password:  req.Password,
 	}
 
 	if err := validators.ValidateUser(user); err != nil {
@@ -61,7 +66,7 @@ func (h *AuthHTTPHandler) RegisterHandler(c *gin.Context) {
 }
 
 func (h *AuthHTTPHandler) LoginHandler(c *gin.Context) {
-	var req validators.LoginRequest
+	var req LoginRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -71,7 +76,12 @@ func (h *AuthHTTPHandler) LoginHandler(c *gin.Context) {
 		return
 	}
 
-	if err := validators.ValidateLogin(req); err != nil {
+	valReq := validators.LoginRequest{
+		Email:    req.Email,
+		Password: req.Password,
+	}
+
+	if err := validators.ValidateLogin(valReq); err != nil {
 		c.JSON(http.StatusBadRequest, validators.HandleValidationError(err))
 		return
 	}
@@ -127,9 +137,7 @@ func (h *AuthHTTPHandler) LogoutHandler(c *gin.Context) {
 }
 
 func (h *AuthHTTPHandler) RefreshTokenHandler(c *gin.Context) {
-	var req struct {
-		RefreshToken string `json:"refresh_token" binding:"required"`
-	}
+	var req RefreshTokenRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
