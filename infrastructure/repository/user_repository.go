@@ -19,7 +19,7 @@ func NewPGUserRepository(db *sql.DB) ports.UserRepository {
 
 func (r *PGUserRepository) FindUserByID(id uuid.UUID) (*entities.User, error) {
 	query := `
-	SELECT id, first_name, last_name, email, password, is_active, is_admin, created_at, updated_at, deleted_at
+	SELECT id, first_name, last_name, email, password, status, is_admin, created_at, updated_at, deleted_at
 	FROM users
 	WHERE id = $1
 	`
@@ -31,7 +31,7 @@ func (r *PGUserRepository) FindUserByID(id uuid.UUID) (*entities.User, error) {
 		&user.LastName,
 		&user.Email,
 		&user.Password,
-		&user.IsActive,
+		&user.Status,
 		&user.IsAdmin,
 		&user.CreatedAt,
 		&user.UpdatedAt,
@@ -81,7 +81,7 @@ func (r *PGUserRepository) Update(user *entities.User) error {
 }
 
 func (r *PGUserRepository) Delete(id uuid.UUID) error {
-	query := `UPDATE users SET deleted_at = NOW() WHERE id = $1`
-	_, err := r.db.Exec(query, id)
+	query := `UPDATE users SET deleted_at = NOW(), status = $2 WHERE id = $1`
+	_, err := r.db.Exec(query, id, entities.Deleted)
 	return err
 }

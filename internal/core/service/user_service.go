@@ -31,8 +31,11 @@ func (s *UserService) GetProfile(userID uuid.UUID) (*entities.User, error) {
 	if err != nil {
 		return nil, fmt.Errorf("user not found: %w", err)
 	}
-	if !user.DeletedAt.IsZero() {
+	if user.Status == entities.Deleted {
 		return nil, fmt.Errorf("user not found")
+	}
+	if user.Status == entities.Deactivated {
+		return nil, fmt.Errorf("user is deactivated")
 	}
 	return user, nil
 }
@@ -50,8 +53,11 @@ func (s *UserService) ChangePassword(userID uuid.UUID, oldPassword, newPassword 
 		return fmt.Errorf("user not found: %w", err)
 	}
 
-	if !currentUser.DeletedAt.IsZero() {
+	if currentUser.Status == entities.Deleted {
 		return fmt.Errorf("user not found")
+	}
+	if currentUser.Status == entities.Deactivated {
+		return fmt.Errorf("user is deactivated")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(currentUser.Password), []byte(oldPassword)); err != nil {

@@ -50,7 +50,7 @@ func (s *AuthService) Register(user *entities.User) error {
 	}
 
 	user.Password = string(hashedPassword)
-	user.IsActive = true
+	user.Status = entities.Active
 	user.IsAdmin = false
 	user.ID = uuid.New()
 	user.CreatedAt = time.Now()
@@ -71,16 +71,18 @@ func (s *AuthService) Login(email, password string) (*entities.TokenPair, error)
 		}
 		return nil, fmt.Errorf("failed to find user: %w", err)
 	}
-	if !user.DeletedAt.IsZero() {
-		fmt.Println("user not found")
+	if user.Status == entities.Deleted {
 		return nil, fmt.Errorf("user not found")
+	}
+	if user.Status == entities.Deactivated {
+		return nil, fmt.Errorf("user is deactivated")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
 		return nil, fmt.Errorf("invalid password: %w", err)
 	}
 
-	if !user.IsActive {
+	if user.Status != entities.Active {
 		return nil, fmt.Errorf("user account is not active: %w", err)
 	}
 
@@ -239,11 +241,14 @@ func (s *AuthService) parseAndValidateToken(token string, expectedType string) (
 		}
 		return nil, fmt.Errorf("failed to find user: %w", err)
 	}
-	if !user.DeletedAt.IsZero() {
+	if user.Status == entities.Deleted {
 		return nil, fmt.Errorf("user not found")
 	}
+	if user.Status == entities.Deactivated {
+		return nil, fmt.Errorf("user is deactivated")
+	}
 
-	if !user.IsActive {
+	if user.Status != entities.Active {
 		return nil, fmt.Errorf("user account is not active")
 	}
 

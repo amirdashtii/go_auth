@@ -28,7 +28,7 @@ func (r *PGAuthRepository) Create(user *entities.User) error {
 	}
 
 	query := `
-		INSERT INTO users (id, first_name, last_name, email, password, is_active, is_admin, created_at, updated_at)
+		INSERT INTO users (id, first_name, last_name, email, password, status, is_admin, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`
 
@@ -38,7 +38,7 @@ func (r *PGAuthRepository) Create(user *entities.User) error {
 		user.LastName,
 		user.Email,
 		user.Password,
-		user.IsActive,
+		user.Status,
 		user.IsAdmin,
 		user.CreatedAt,
 		user.UpdatedAt,
@@ -49,7 +49,7 @@ func (r *PGAuthRepository) Create(user *entities.User) error {
 
 func (r *PGAuthRepository) FindByEmail(email string) (*entities.User, error) {
 	query := `
-	SELECT id, first_name, last_name, email, password, is_active, is_admin, created_at, updated_at, deleted_at
+	SELECT id, first_name, last_name, email, password, status, is_admin, created_at, updated_at, deleted_at
 	FROM users
 	WHERE email = $1
 `
@@ -61,7 +61,7 @@ func (r *PGAuthRepository) FindByEmail(email string) (*entities.User, error) {
 		&user.LastName,
 		&user.Email,
 		&user.Password,
-		&user.IsActive,
+		&user.Status,
 		&user.IsAdmin,
 		&user.CreatedAt,
 		&user.UpdatedAt,
@@ -77,7 +77,7 @@ func (r *PGAuthRepository) FindByEmail(email string) (*entities.User, error) {
 
 func (r *PGAuthRepository) FindAuthUserByID(id uuid.UUID) (*entities.User, error) {
 	query := `
-	SELECT id, first_name, last_name, email, password, is_active, is_admin, created_at, updated_at, deleted_at
+	SELECT id, first_name, last_name, email, password, status, is_admin, created_at, updated_at, deleted_at
 	FROM users
 	WHERE id = $1
 	`
@@ -89,7 +89,7 @@ func (r *PGAuthRepository) FindAuthUserByID(id uuid.UUID) (*entities.User, error
 		&user.LastName,
 		&user.Email,
 		&user.Password,
-		&user.IsActive,
+		&user.Status,
 		&user.IsAdmin,
 		&user.CreatedAt,
 		&user.UpdatedAt,
