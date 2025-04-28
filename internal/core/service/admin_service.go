@@ -23,9 +23,10 @@ func NewAdminService() *AdminService {
 	}
 }
 
-func (s *AdminService) GetUsers() ([]*entities.User, error) {
-	// TODO: Implement get users logic
-	return nil, nil
+func (s *AdminService) GetUsers(status, role, sort, order string) ([]*entities.User, error) {
+	statusInt := entities.ParseStatusType(status)
+	roleInt := entities.ParseRoleType(role)
+	return s.db.FindUsers(statusInt, roleInt, sort, order)
 }
 
 func (s *AdminService) AdminGetUserByID(userID uuid.UUID) (*entities.User, error) {

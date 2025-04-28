@@ -19,7 +19,7 @@ type UserRepository interface {
 }
 
 type AdminRepository interface {
-	FindAll() ([]*entities.User, error)
+	FindUsers(status entities.StatusType, role entities.RoleType, sort, order string) ([]*entities.User, error)
 	FindActiveUsers() ([]*entities.User, error)
 	FindAdmins() ([]*entities.User, error)
 	AdminUpdateUser(user *entities.User) error

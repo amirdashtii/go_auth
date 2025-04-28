@@ -21,7 +21,7 @@ type UserService interface {
 }
 
 type AdminService interface {
-	GetUsers() ([]*entities.User, error)
+	GetUsers(status, role, sort, order string) ([]*entities.User, error)
 	AdminGetUserByID(userID uuid.UUID) (*entities.User, error)
 	AdminUpdateUser(userID uuid.UUID, user *entities.User) error
 	PromoteToAdmin(userID uuid.UUID) error

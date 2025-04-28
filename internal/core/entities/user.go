@@ -1,7 +1,7 @@
 package entities
 
 import (
-	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -28,26 +28,17 @@ func (r RoleType) String() string {
 	}
 }
 
-func (r RoleType) MarshalJSON() ([]byte, error) {
-	return json.Marshal(r.String())
-}
-
-func (r *RoleType) UnmarshalJSON(data []byte) error {
-	var str string
-	if err := json.Unmarshal(data, &str); err != nil {
-		return err
-	}
-	switch str {
-	case "SuperAdmin":
-		*r = SuperAdminRole
-	case "Admin":
-		*r = AdminRole
-	case "User":
-		*r = UserRole
+func ParseRoleType(s string) RoleType {
+	switch strings.ToLower(s) {
+	case "superadmin":
+		return SuperAdminRole
+	case "admin":
+		return AdminRole
+	case "user":
+		return UserRole
 	default:
-		*r = UserRole
+		return UserRole
 	}
-	return nil
 }
 
 type StatusType int
@@ -71,26 +62,17 @@ func (s StatusType) String() string {
 	}
 }
 
-func (s StatusType) MarshalJSON() ([]byte, error) {
-	return json.Marshal(s.String())
-}
-
-func (s *StatusType) UnmarshalJSON(data []byte) error {
-	var str string
-	if err := json.Unmarshal(data, &str); err != nil {
-		return err
-	}
-	switch str {
-	case "Active":
-		*s = Active
-	case "Deactivated":
-		*s = Deactivated
-	case "Deleted":
-		*s = Deleted
+func ParseStatusType(s string) StatusType {
+	switch strings.ToLower(s) {
+	case "active":
+		return Active
+	case "deactivated":
+		return Deactivated
+	case "deleted":
+		return Deleted
 	default:
-		*s = Active
+		return Active
 	}
-	return nil
 }
 
 type User struct {
@@ -103,5 +85,5 @@ type User struct {
 	Role      RoleType   `json:"role"`
 	CreatedAt time.Time  `json:"created_at"`
 	UpdatedAt time.Time  `json:"updated_at"`
-	DeletedAt time.Time  `json:"deleted_at"`
+	DeletedAt *time.Time `json:"deleted_at"`
 }

@@ -81,40 +81,20 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		roleClaim := claims["role"]
+		var roleString string
+
+		switch v := roleClaim.(type) {
+		case float64:
+			roleString = entities.RoleType(int(v)).String()
+		case string:
+			roleString = v
+		default:
+			roleString = "Unknown"
+		}
+
+		c.Set("role", roleString)
 		c.Set("user_id", userID)
-
-		c.Next()
-	}
-}
-
-func AdminMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-
-		userValue, exists := c.Get("user")
-		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "Authentication required",
-			})
-			c.Abort()
-			return
-		}
-
-		user, ok := userValue.(*entities.User)
-		if !ok {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Failed to retrieve user information",
-			})
-			c.Abort()
-			return
-		}
-
-		if !user.IsAdmin {
-			c.JSON(http.StatusForbidden, gin.H{
-				"error": "Admin privileges required",
-			})
-			c.Abort()
-			return
-		}
 
 		c.Next()
 	}
