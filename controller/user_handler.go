@@ -58,7 +58,7 @@ func (h *UserHTTPHandler) GetUserProfileHandler(c *gin.Context) {
 		return
 	}
 
-	userProfile, err := h.svc.GetProfile(uuid)
+	userProfile, err := h.svc.GetProfile(&uuid)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -117,7 +117,7 @@ func (h *UserHTTPHandler) UpdateUserProfileHandler(c *gin.Context) {
 		Email:     req.Email,
 	}
 	
-	err = h.svc.UpdateProfile(uuid, &user)
+	err = h.svc.UpdateProfile(&uuid, &user)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to update profile",
@@ -163,7 +163,7 @@ func (h *UserHTTPHandler) ChangePasswordHandler(c *gin.Context) {
 		return
 	}
 
-	err = h.svc.ChangePassword(uuid, req.OldPassword, req.NewPassword)
+	err = h.svc.ChangePassword(&uuid, &req.OldPassword, &req.NewPassword)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Failed to change password",
@@ -198,7 +198,7 @@ func (h *UserHTTPHandler) DeleteUserProfileHandler(c *gin.Context) {
 		return
 	}
 
-	err = h.svc.DeleteProfile(uuid)
+	err = h.svc.DeleteProfile(&uuid)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to delete profile",

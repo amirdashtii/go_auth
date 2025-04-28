@@ -29,13 +29,13 @@ func HandleValidationError(err error) map[string]interface{} {
 	}
 }
 
-func ValidateUser(user entities.User) error {
+func ValidateUser(user *entities.User) error {
 	validate := validator.New()
 	RegisterValidator(validate)
 	return validate.Struct(user)
 }
 
-func ValidateLogin(req LoginRequest) error {
+func ValidateLogin(req *LoginRequest) error {
 	validate := validator.New()
 	return validate.Struct(req)
 }

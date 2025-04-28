@@ -48,7 +48,7 @@ func (h *AuthHTTPHandler) RegisterHandler(c *gin.Context) {
 		Password:  req.Password,
 	}
 
-	if err := validators.ValidateUser(user); err != nil {
+	if err := validators.ValidateUser(&user); err != nil {
 		c.JSON(http.StatusBadRequest, validators.HandleValidationError(err))
 		return
 	}
@@ -81,12 +81,12 @@ func (h *AuthHTTPHandler) LoginHandler(c *gin.Context) {
 		Password: req.Password,
 	}
 
-	if err := validators.ValidateLogin(valReq); err != nil {
+	if err := validators.ValidateLogin(&valReq); err != nil {
 		c.JSON(http.StatusBadRequest, validators.HandleValidationError(err))
 		return
 	}
 
-	tokens, err := h.svc.Login(req.Email, req.Password)
+	tokens, err := h.svc.Login(&req.Email, &req.Password)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error":   "Login failed",

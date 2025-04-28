@@ -23,48 +23,29 @@ func NewAdminService() *AdminService {
 	}
 }
 
-func (s *AdminService) GetUsers(status, role, sort, order string) ([]*entities.User, error) {
-	statusInt := entities.ParseStatusType(status)
-	roleInt := entities.ParseRoleType(role)
-	return s.db.FindUsers(statusInt, roleInt, sort, order)
+func (s *AdminService) GetUsers(status *entities.StatusType, role *entities.RoleType, sort, order *string) ([]*entities.User, error) {
+	return s.db.FindUsers(status, role, sort, order)
 }
 
-func (s *AdminService) AdminGetUserByID(userID uuid.UUID) (*entities.User, error) {
-	// TODO: Implement get user by ID logic
-	return nil, nil
+func (s *AdminService) AdminGetUserByID(userID *uuid.UUID) (*entities.User, error) {
+	return s.db.AdminGetUserByID(userID)
 }
 
-func (s *AdminService) AdminUpdateUser(userID uuid.UUID, user *entities.User) error {
-	// TODO: Implement update user logic
+func (s *AdminService) AdminUpdateUser(userID *uuid.UUID, user *entities.User) error {
+	user.ID = *userID
 	return s.db.AdminUpdateUser(user)
 }
 
-func (s *AdminService) PromoteToAdmin(userID uuid.UUID) error {
-	// TODO: Implement promote to admin logic
-	return nil
+func (s *AdminService) ChangeUserRole(userID *uuid.UUID, role *entities.RoleType) error {
+
+	return s.db.AdminChangeUserRole(userID, role)
 }
 
-func (s *AdminService) DeactivateUser(userID uuid.UUID) error {
-	// TODO: Implement deactivate user logic
-	return nil
+func (s *AdminService) ChangeUserStatus(userID *uuid.UUID, status *entities.StatusType) error {
+
+	return s.db.AdminChangeUserStatus(userID, status)
 }
 
-func (s *AdminService) ActivateUser(userID uuid.UUID) error {
-	// TODO: Implement activate user logic
-	return nil
-}
-
-func (s *AdminService) AdminDeleteUser(userID uuid.UUID) error {
-	// TODO: Implement delete user logic
+func (s *AdminService) AdminDeleteUser(userID *uuid.UUID) error {
 	return s.db.AdminDeleteUser(userID)
-}
-
-func (s *AdminService) FindActiveUsers() ([]*entities.User, error) {
-	// TODO: Implement find active users logic
-	return nil, nil
-}
-
-func (s *AdminService) FindAdmins() ([]*entities.User, error) {
-	// TODO: Implement find admins logic
-	return nil, nil
 }

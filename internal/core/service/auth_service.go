@@ -63,7 +63,7 @@ func (s *AuthService) Register(user *entities.User) error {
 	return nil
 }
 
-func (s *AuthService) Login(email, password string) (*entities.TokenPair, error) {
+func (s *AuthService) Login(email, password *string) (*entities.TokenPair, error) {
 	user, err := s.db.FindByEmail(email)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -78,7 +78,7 @@ func (s *AuthService) Login(email, password string) (*entities.TokenPair, error)
 		return nil, fmt.Errorf("user is deactivated")
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(*password)); err != nil {
 		return nil, fmt.Errorf("invalid password: %w", err)
 	}
 

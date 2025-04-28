@@ -14,9 +14,14 @@ type AdminUserResponse struct {
 }
 
 type AdminUserUpdateRequest struct {
-	FirstName string  `json:"first_name"`
-	LastName  string  `json:"last_name"`
-	Email     string  `json:"email"`
-	Status    *string `json:"status,omitempty"`
-	Role      *string `json:"role,omitempty"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	Email     string `json:"email"`
+}
+
+type AdminUserUpdateRoleRequest struct {
+	Role string `json:"role" binding:"required"`
+}
+type AdminUserUpdateStatusRequest struct {
+	Status string `json:"status" binding:"required"`
 }

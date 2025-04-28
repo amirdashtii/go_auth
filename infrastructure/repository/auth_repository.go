@@ -18,7 +18,7 @@ func NewPGAuthRepository(db *sql.DB) ports.AuthRepository {
 }
 
 func (r *PGAuthRepository) Create(user *entities.User) error {
-	existingUser, err := r.FindByEmail(user.Email)
+	existingUser, err := r.FindByEmail(&user.Email)
 	if err != nil && err != sql.ErrNoRows {
 		return err
 	}
@@ -47,7 +47,7 @@ func (r *PGAuthRepository) Create(user *entities.User) error {
 	return err
 }
 
-func (r *PGAuthRepository) FindByEmail(email string) (*entities.User, error) {
+func (r *PGAuthRepository) FindByEmail(email *string) (*entities.User, error) {
 	query := `
 	SELECT id, first_name, last_name, email, password, status, role, created_at, updated_at, deleted_at
 	FROM users

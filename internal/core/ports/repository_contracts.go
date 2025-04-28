@@ -9,21 +9,22 @@ import (
 
 type AuthRepository interface {
 	Create(user *entities.User) error
-	FindByEmail(email string) (*entities.User, error)
+	FindByEmail(email *string) (*entities.User, error)
 	FindAuthUserByID(id uuid.UUID) (*entities.User, error)
 }
 type UserRepository interface {
-	FindUserByID(id uuid.UUID) (*entities.User, error)
+	FindUserByID(id *uuid.UUID) (*entities.User, error)
 	Update(user *entities.User) error
-	Delete(id uuid.UUID) error
+	Delete(id *uuid.UUID) error
 }
 
 type AdminRepository interface {
-	FindUsers(status entities.StatusType, role entities.RoleType, sort, order string) ([]*entities.User, error)
-	FindActiveUsers() ([]*entities.User, error)
-	FindAdmins() ([]*entities.User, error)
+	FindUsers(status *entities.StatusType, role *entities.RoleType, sort, order *string) ([]*entities.User, error)
+	AdminGetUserByID(id *uuid.UUID) (*entities.User, error)
 	AdminUpdateUser(user *entities.User) error
-	AdminDeleteUser(id uuid.UUID) error
+	AdminChangeUserRole(id *uuid.UUID, role *entities.RoleType) error
+	AdminChangeUserStatus(id *uuid.UUID, status *entities.StatusType) error
+	AdminDeleteUser(id *uuid.UUID) error
 }
 type InMemoryRespositoryContracts interface {
 	AddToken(userID, token string, expiration time.Duration) error
