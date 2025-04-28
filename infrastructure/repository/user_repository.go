@@ -19,7 +19,7 @@ func NewPGUserRepository(db *sql.DB) ports.UserRepository {
 
 func (r *PGUserRepository) FindUserByID(id uuid.UUID) (*entities.User, error) {
 	query := `
-	SELECT id, first_name, last_name, email, password, status, is_admin, created_at, updated_at, deleted_at
+	SELECT id, first_name, last_name, email, password, status, role, created_at, updated_at, deleted_at
 	FROM users
 	WHERE id = $1
 	`
@@ -32,7 +32,7 @@ func (r *PGUserRepository) FindUserByID(id uuid.UUID) (*entities.User, error) {
 		&user.Email,
 		&user.Password,
 		&user.Status,
-		&user.IsAdmin,
+		&user.Role,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 		&user.DeletedAt,

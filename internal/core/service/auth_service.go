@@ -51,7 +51,7 @@ func (s *AuthService) Register(user *entities.User) error {
 
 	user.Password = string(hashedPassword)
 	user.Status = entities.Active
-	user.IsAdmin = false
+	user.Role = entities.UserRole
 	user.ID = uuid.New()
 	user.CreatedAt = time.Now()
 	user.UpdatedAt = time.Now()
@@ -165,7 +165,7 @@ func (s *AuthService) createTokenPair(user *entities.User) (*entities.TokenPair,
 func (s *AuthService) createToken(user *entities.User, expiration time.Duration, tokenType string) (string, error) {
 	claims := jwt.MapClaims{
 		"user_id":    user.ID,
-		"is_admin":   user.IsAdmin,
+		"role":       user.Role,
 		"token_type": tokenType,
 		"exp":        time.Now().Add(expiration).Unix(),
 	}

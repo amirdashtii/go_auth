@@ -7,6 +7,49 @@ import (
 	"github.com/google/uuid"
 )
 
+type RoleType int
+
+const (
+	UserRole RoleType = iota
+	SuperAdminRole
+	AdminRole
+)
+
+func (r RoleType) String() string {
+	switch r {
+	case SuperAdminRole:
+		return "SuperAdmin"
+	case AdminRole:
+		return "Admin"
+	case UserRole:
+		return "User"
+	default:
+		return "Unknown"
+	}
+}
+
+func (r RoleType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(r.String())
+}
+
+func (r *RoleType) UnmarshalJSON(data []byte) error {
+	var str string
+	if err := json.Unmarshal(data, &str); err != nil {
+		return err
+	}
+	switch str {
+	case "SuperAdmin":
+		*r = SuperAdminRole
+	case "Admin":
+		*r = AdminRole
+	case "User":
+		*r = UserRole
+	default:
+		*r = UserRole
+	}
+	return nil
+}
+
 type StatusType int
 
 const (
@@ -51,14 +94,14 @@ func (s *StatusType) UnmarshalJSON(data []byte) error {
 }
 
 type User struct {
-	ID         uuid.UUID `json:"id"`
-	FirstName  string    `json:"first_name"`
-	LastName   string    `json:"last_name"`
-	Email      string    `json:"email"`
-	Password   string    `json:"password"`
-	Status     StatusType `json:"status"`
-	IsAdmin    bool      `json:"is_admin"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
-	DeletedAt  time.Time `json:"deleted_at"`
+	ID        uuid.UUID  `json:"id"`
+	FirstName string     `json:"first_name"`
+	LastName  string     `json:"last_name"`
+	Email     string     `json:"email"`
+	Password  string     `json:"password"`
+	Status    StatusType `json:"status"`
+	Role      RoleType   `json:"role"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+	DeletedAt time.Time  `json:"deleted_at"`
 }
