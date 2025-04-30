@@ -1,13 +1,13 @@
 package dto
 
 type RegisterRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=8"`
+	PhoneNumber string `json:"phone_number" binding:"required"`
+	Password    string `json:"password" binding:"required,min=8"`
 }
 
 type LoginRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=8"`
+	PhoneNumber string `json:"phone_number" binding:"required"`
+	Password    string `json:"password" binding:"required,min=8"`
 }
 
 type RefreshTokenRequest struct {

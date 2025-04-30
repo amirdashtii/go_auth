@@ -5,6 +5,7 @@ import (
 
 	"github.com/amirdashtii/go_auth/controller/dto"
 	"github.com/amirdashtii/go_auth/controller/middleware"
+
 	// "github.com/amirdashtii/go_auth/controller/validators"
 	"github.com/amirdashtii/go_auth/internal/core/ports"
 	"github.com/amirdashtii/go_auth/internal/core/service"
@@ -61,7 +62,7 @@ func (h *AuthHTTPHandler) RegisterHandler(c *gin.Context) {
 }
 
 func (h *AuthHTTPHandler) LoginHandler(c *gin.Context) {
-	var req dto.LoginRequest
+	var req *dto.LoginRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -76,7 +77,7 @@ func (h *AuthHTTPHandler) LoginHandler(c *gin.Context) {
 	// 	return
 	// }
 
-	tokens, err := h.svc.Login(&req.Email, &req.Password)
+	tokens, err := h.svc.Login(req)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error":   "Login failed",

@@ -67,15 +67,13 @@ func (h *UserHTTPHandler) GetUserProfileHandler(c *gin.Context) {
 		return
 	}
 
-
-
 	c.JSON(http.StatusOK, resp)
 }
 
 func (h *UserHTTPHandler) UpdateUserProfileHandler(c *gin.Context) {
-	var req dto.UserUpdateRequest
+	var updateReq dto.UserUpdateRequest
 
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&updateReq); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Invalid request format",
 			"details": err.Error(),
@@ -106,7 +104,7 @@ func (h *UserHTTPHandler) UpdateUserProfileHandler(c *gin.Context) {
 		return
 	}
 
-	err = h.svc.UpdateProfile(&uuid, &req)
+	err = h.svc.UpdateProfile(&uuid, &updateReq)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to update profile",
@@ -119,9 +117,9 @@ func (h *UserHTTPHandler) UpdateUserProfileHandler(c *gin.Context) {
 }
 
 func (h *UserHTTPHandler) ChangePasswordHandler(c *gin.Context) {
-	var req dto.ChangePasswordRequest
+	var changePasswordReq dto.ChangePasswordRequest
 
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&changePasswordReq); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Invalid request format",
 			"details": err.Error(),
@@ -152,7 +150,7 @@ func (h *UserHTTPHandler) ChangePasswordHandler(c *gin.Context) {
 		return
 	}
 
-	err = h.svc.ChangePassword(&uuid, &req.OldPassword, &req.NewPassword)
+	err = h.svc.ChangePassword(&uuid, &changePasswordReq)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Failed to change password",

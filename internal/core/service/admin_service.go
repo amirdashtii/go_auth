@@ -34,6 +34,7 @@ func (s *AdminService) GetUsers(status *entities.StatusType, role *entities.Role
 	for _, u := range users {
 		resp = append(resp, dto.AdminUserResponse{
 			ID:        u.ID.String(),
+			PhoneNumber: u.PhoneNumber,
 			FirstName: u.FirstName,
 			LastName:  u.LastName,
 			Email:     u.Email,
@@ -53,6 +54,7 @@ func (s *AdminService) AdminGetUserByID(userID *uuid.UUID) (*dto.AdminUserRespon
 	}
 	resp := &dto.AdminUserResponse{
 		ID:        user.ID.String(),
+		PhoneNumber: user.PhoneNumber,
 		FirstName: user.FirstName,
 		LastName:  user.LastName,
 		Email:     user.Email,
@@ -64,6 +66,7 @@ func (s *AdminService) AdminGetUserByID(userID *uuid.UUID) (*dto.AdminUserRespon
 
 func (s *AdminService) AdminUpdateUser(userID *uuid.UUID, req *dto.AdminUserUpdateRequest) error {
 	user := &entities.User{
+		PhoneNumber: req.PhoneNumber,
 		FirstName: req.FirstName,
 		LastName:  req.LastName,
 		Email:     req.Email,

@@ -35,7 +35,7 @@ func (r *PGAdminRepository) FindUsers(status *entities.StatusType, role *entitie
 	for rows.Next() {
 		fmt.Println(rows)
 		var user entities.User
-		err := rows.Scan(&user.ID, &user.FirstName, &user.LastName, &user.Email, &user.Password, &user.Status, &user.Role, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt)
+		err := rows.Scan(&user.ID, &user.PhoneNumber, &user.FirstName, &user.LastName, &user.Email, &user.Password, &user.Status, &user.Role, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -52,7 +52,7 @@ func (r *PGAdminRepository) AdminGetUserByID(id *uuid.UUID) (*entities.User, err
 	query := `SELECT * FROM users WHERE id = $1`
 	row := r.db.QueryRow(query, id)
 	var user entities.User
-	err := row.Scan(&user.ID, &user.FirstName, &user.LastName, &user.Email, &user.Password, &user.Status, &user.Role, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt)
+	err := row.Scan(&user.ID, &user.PhoneNumber, &user.FirstName, &user.LastName, &user.Email, &user.Password, &user.Status, &user.Role, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -64,6 +64,11 @@ func (r *PGAdminRepository) AdminUpdateUser(user *entities.User) error {
 	args := []interface{}{}
 	i := 1
 
+	if user.PhoneNumber != "" {
+		query += "phone_number = $" + fmt.Sprint(i) + ", "
+		args = append(args, user.PhoneNumber)
+		i++
+	}
 	if user.FirstName != "" {
 		query += "first_name = $" + fmt.Sprint(i) + ", "
 		args = append(args, user.FirstName)

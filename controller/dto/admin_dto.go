@@ -5,18 +5,20 @@ type AdminUserListResponse struct {
 }
 
 type AdminUserResponse struct {
-	ID        string `json:"id"`
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	Email     string `json:"email"`
-	Status    string `json:"status"`
-	Role      string `json:"role"`
+	ID          string `json:"id"`
+	PhoneNumber string `json:"phone_number"`
+	FirstName   string `json:"first_name"`
+	LastName    string `json:"last_name"`
+	Email       string `json:"email"`
+	Status      string `json:"status"`
+	Role        string `json:"role"`
 }
 
 type AdminUserUpdateRequest struct {
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	Email     string `json:"email"`
+	PhoneNumber string `json:"phone_number"`
+	FirstName   string `json:"first_name"`
+	LastName    string `json:"last_name"`
+	Email       string `json:"email"`
 }
 
 type AdminUserUpdateRoleRequest struct {

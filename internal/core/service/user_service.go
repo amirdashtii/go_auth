@@ -52,6 +52,7 @@ func (s *UserService) UpdateProfile(userID *uuid.UUID, req *dto.UserUpdateReques
 
 	user := &entities.User{
 		ID:        *userID,
+		PhoneNumber: req.PhoneNumber,
 		FirstName: req.FirstName,
 		LastName:  req.LastName,
 		Email:     req.Email,
@@ -60,7 +61,7 @@ func (s *UserService) UpdateProfile(userID *uuid.UUID, req *dto.UserUpdateReques
 	return s.db.Update(user)
 }
 
-func (s *UserService) ChangePassword(userID *uuid.UUID, oldPassword, newPassword *string) error {
+func (s *UserService) ChangePassword(userID *uuid.UUID, changePasswordReq *dto.ChangePasswordRequest) error {
 
 	currentUser, err := s.db.FindUserByID(userID)
 	if err != nil {
@@ -74,11 +75,11 @@ func (s *UserService) ChangePassword(userID *uuid.UUID, oldPassword, newPassword
 		return fmt.Errorf("user is deactivated")
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(currentUser.Password), []byte(*oldPassword)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(currentUser.Password), []byte(changePasswordReq.OldPassword)); err != nil {
 		return fmt.Errorf("current password is incorrect: %w", err)
 	}
 
-	hashedNewPassword, err := bcrypt.GenerateFromPassword([]byte(*newPassword), bcrypt.DefaultCost)
+	hashedNewPassword, err := bcrypt.GenerateFromPassword([]byte(changePasswordReq.NewPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("failed to hash password: %w", err)
 	}

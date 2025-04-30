@@ -119,13 +119,13 @@ func (h *AdminHTTPHandler) UpdateUserHandler(c *gin.Context) {
 		return
 	}
 
-	var req dto.AdminUserUpdateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	var updateReq dto.AdminUserUpdateRequest
+	if err := c.ShouldBindJSON(&updateReq); err != nil {
 		c.JSON(400, gin.H{"error": "Invalid request", "details": err.Error()})
 		return
 	}
 
-	err = h.svc.AdminUpdateUser(&userID, &req)
+	err = h.svc.AdminUpdateUser(&userID, &updateReq)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to update user", "details": err.Error()})
 		return
@@ -156,15 +156,15 @@ func (h *AdminHTTPHandler) ChangeUserRoleHandler(c *gin.Context) {
 		return
 	}
 
-	var req dto.AdminUserUpdateRoleRequest
+	var updateRoleReq dto.AdminUserUpdateRoleRequest
 
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&updateRoleReq); err != nil {
 		c.JSON(400, gin.H{"error": "Invalid request", "details": err.Error()})
 		return
 	}
 
-	reqRole := entities.ParseRoleType(req.Role)
-	err = h.svc.ChangeUserRole(&userID, &reqRole)
+	updateRole := entities.ParseRoleType(updateRoleReq.Role)
+	err = h.svc.ChangeUserRole(&userID, &updateRole)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to change user role", "details": err.Error()})
 		return
@@ -195,14 +195,14 @@ func (h *AdminHTTPHandler) ChangeUserStatusHandler(c *gin.Context) {
 		return
 	}
 
-	var req dto.AdminUserUpdateStatusRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	var updateStatusReq dto.AdminUserUpdateStatusRequest
+	if err := c.ShouldBindJSON(&updateStatusReq); err != nil {
 		c.JSON(400, gin.H{"error": "Invalid request", "details": err.Error()})
 		return
 	}
 
-	status := entities.ParseStatusType(req.Status)
-	err = h.svc.ChangeUserStatus(&userID, &status)
+	updateStatus := entities.ParseStatusType(updateStatusReq.Status)
+	err = h.svc.ChangeUserStatus(&userID, &updateStatus)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to change user status", "details": err.Error()})
 		return

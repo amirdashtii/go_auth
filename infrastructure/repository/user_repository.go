@@ -19,7 +19,7 @@ func NewPGUserRepository(db *sql.DB) ports.UserRepository {
 
 func (r *PGUserRepository) FindUserByID(id *uuid.UUID) (*entities.User, error) {
 	query := `
-	SELECT id, first_name, last_name, email, password, status, role, created_at, updated_at, deleted_at
+	SELECT id, phone_number, first_name, last_name, email, password, status, role, created_at, updated_at, deleted_at
 	FROM users
 	WHERE id = $1
 	`
@@ -27,6 +27,7 @@ func (r *PGUserRepository) FindUserByID(id *uuid.UUID) (*entities.User, error) {
 	var user entities.User
 	err := r.db.QueryRow(query, id).Scan(
 		&user.ID,
+		&user.PhoneNumber,
 		&user.FirstName,
 		&user.LastName,
 		&user.Email,
@@ -50,6 +51,11 @@ func (r *PGUserRepository) Update(user *entities.User) error {
 	args := []interface{}{}
 	i := 1
 
+	if user.PhoneNumber != "" {
+		query += "phone_number = $" + fmt.Sprint(i) + ", "
+		args = append(args, user.PhoneNumber)
+		i++
+	}
 	if user.FirstName != "" {
 		query += "first_name = $" + fmt.Sprint(i) + ", "
 		args = append(args, user.FirstName)

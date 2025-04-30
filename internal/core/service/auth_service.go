@@ -51,13 +51,13 @@ func (s *AuthService) Register(req *dto.RegisterRequest) error {
 	}
 
 	user := entities.User{
-		Email:     req.Email,
-		Password:  string(hashedPassword),
-		Status:    entities.Active,
-		Role:      entities.UserRole,
-		ID:        uuid.New(),
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		PhoneNumber: req.PhoneNumber,
+		Password:    string(hashedPassword),
+		Status:      entities.Active,
+		Role:        entities.UserRole,
+		ID:          uuid.New(),
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
 	}
 
 	if err := s.db.Create(&user); err != nil {
@@ -67,8 +67,8 @@ func (s *AuthService) Register(req *dto.RegisterRequest) error {
 	return nil
 }
 
-func (s *AuthService) Login(email, password *string) (*entities.TokenPair, error) {
-	user, err := s.db.FindByEmail(email)
+func (s *AuthService) Login(loginReq *dto.LoginRequest) (*entities.TokenPair, error) {
+	user, err := s.db.FindUserByPhoneNumber(&loginReq.PhoneNumber)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("user not found: %w", err)
@@ -82,7 +82,7 @@ func (s *AuthService) Login(email, password *string) (*entities.TokenPair, error
 		return nil, fmt.Errorf("user is deactivated")
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(*password)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginReq.Password)); err != nil {
 		return nil, fmt.Errorf("invalid password: %w", err)
 	}
 
@@ -238,7 +238,7 @@ func (s *AuthService) parseAndValidateToken(token string, expectedType string) (
 		return nil, fmt.Errorf("unexpected user ID format in token")
 	}
 
-	user, err := s.db.FindAuthUserByID(userID)
+	user, err := s.db.FindUserByID(userID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("user not found")
