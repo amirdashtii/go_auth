@@ -1,4 +1,4 @@
-package controller
+package dto
 
 type UserProfileResponse struct {
     ID        string `json:"id"`

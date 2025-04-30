@@ -3,6 +3,7 @@ package controller
 import (
 	"net/http"
 
+	"github.com/amirdashtii/go_auth/controller/dto"
 	"github.com/amirdashtii/go_auth/controller/middleware"
 	"github.com/amirdashtii/go_auth/internal/core/entities"
 	"github.com/amirdashtii/go_auth/internal/core/ports"
@@ -56,25 +57,13 @@ func (h *AdminHTTPHandler) GetUsersHandler(c *gin.Context) {
 	sort := c.DefaultQuery("sort", "created_at")
 	order := c.DefaultQuery("order", "desc")
 
-	users, err := h.svc.GetUsers(&status, &roleFilter, &sort, &order)
+	resp, err := h.svc.GetUsers(&status, &roleFilter, &sort, &order)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to retrieve users", "details": err.Error()})
 		return
 	}
 
-	var resp []AdminUserResponse
-	for _, u := range users {
-		resp = append(resp, AdminUserResponse{
-			ID:        u.ID.String(),
-			FirstName: u.FirstName,
-			LastName:  u.LastName,
-			Email:     u.Email,
-			Status:    u.Status.String(),
-			Role:      u.Role.String(),
-		})
-	}
-
-	c.JSON(200, AdminUserListResponse{Users: resp})
+	c.JSON(200, dto.AdminUserListResponse{Users: resp})
 }
 
 func (h *AdminHTTPHandler) GetUserByIDHandler(c *gin.Context) {
@@ -99,20 +88,12 @@ func (h *AdminHTTPHandler) GetUserByIDHandler(c *gin.Context) {
 		return
 	}
 
-	user, err := h.svc.AdminGetUserByID(&userID)
+	resp, err := h.svc.AdminGetUserByID(&userID)
 	if err != nil {
 		c.JSON(404, gin.H{"error": "User not found"})
 		return
 	}
 
-	resp := AdminUserResponse{
-		ID:        user.ID.String(),
-		FirstName: user.FirstName,
-		LastName:  user.LastName,
-		Email:     user.Email,
-		Status:    user.Status.String(),
-		Role:      user.Role.String(),
-	}
 	c.JSON(200, resp)
 }
 
@@ -138,19 +119,13 @@ func (h *AdminHTTPHandler) UpdateUserHandler(c *gin.Context) {
 		return
 	}
 
-	var req AdminUserUpdateRequest
+	var req dto.AdminUserUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(400, gin.H{"error": "Invalid request", "details": err.Error()})
 		return
 	}
 
-	user := &entities.User{
-		FirstName: req.FirstName,
-		LastName:  req.LastName,
-		Email:     req.Email,
-	}
-
-	err = h.svc.AdminUpdateUser(&userID, user)
+	err = h.svc.AdminUpdateUser(&userID, &req)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to update user", "details": err.Error()})
 		return
@@ -159,7 +134,7 @@ func (h *AdminHTTPHandler) UpdateUserHandler(c *gin.Context) {
 	c.JSON(200, gin.H{"message": "User updated successfully"})
 }
 
-func (h *AdminHTTPHandler) 	ChangeUserRoleHandler(c *gin.Context) {
+func (h *AdminHTTPHandler) ChangeUserRoleHandler(c *gin.Context) {
 	role, exists := c.Get("role")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
@@ -181,7 +156,7 @@ func (h *AdminHTTPHandler) 	ChangeUserRoleHandler(c *gin.Context) {
 		return
 	}
 
-	var req AdminUserUpdateRoleRequest
+	var req dto.AdminUserUpdateRoleRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(400, gin.H{"error": "Invalid request", "details": err.Error()})
@@ -220,7 +195,7 @@ func (h *AdminHTTPHandler) ChangeUserStatusHandler(c *gin.Context) {
 		return
 	}
 
-	var req AdminUserUpdateStatusRequest
+	var req dto.AdminUserUpdateStatusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(400, gin.H{"error": "Invalid request", "details": err.Error()})
 		return

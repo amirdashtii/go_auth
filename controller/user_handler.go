@@ -3,8 +3,8 @@ package controller
 import (
 	"net/http"
 
+	"github.com/amirdashtii/go_auth/controller/dto"
 	"github.com/amirdashtii/go_auth/controller/middleware"
-	"github.com/amirdashtii/go_auth/internal/core/entities"
 	"github.com/amirdashtii/go_auth/internal/core/ports"
 	"github.com/amirdashtii/go_auth/internal/core/service"
 
@@ -58,7 +58,7 @@ func (h *UserHTTPHandler) GetUserProfileHandler(c *gin.Context) {
 		return
 	}
 
-	userProfile, err := h.svc.GetProfile(&uuid)
+	resp, err := h.svc.GetProfile(&uuid)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -67,18 +67,13 @@ func (h *UserHTTPHandler) GetUserProfileHandler(c *gin.Context) {
 		return
 	}
 
-	resp := UserProfileResponse{
-		ID:        userProfile.ID.String(),
-		FirstName: userProfile.FirstName,
-		LastName:  userProfile.LastName,
-		Email:     userProfile.Email,
-	}
+
 
 	c.JSON(http.StatusOK, resp)
 }
 
 func (h *UserHTTPHandler) UpdateUserProfileHandler(c *gin.Context) {
-	var req UserUpdateRequest
+	var req dto.UserUpdateRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -110,14 +105,8 @@ func (h *UserHTTPHandler) UpdateUserProfileHandler(c *gin.Context) {
 		})
 		return
 	}
-	
-	user := entities.User{
-		FirstName: req.FirstName,
-		LastName:  req.LastName,
-		Email:     req.Email,
-	}
-	
-	err = h.svc.UpdateProfile(&uuid, &user)
+
+	err = h.svc.UpdateProfile(&uuid, &req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to update profile",
@@ -130,7 +119,7 @@ func (h *UserHTTPHandler) UpdateUserProfileHandler(c *gin.Context) {
 }
 
 func (h *UserHTTPHandler) ChangePasswordHandler(c *gin.Context) {
-	var req ChangePasswordRequest
+	var req dto.ChangePasswordRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{

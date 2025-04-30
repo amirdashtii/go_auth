@@ -1,4 +1,4 @@
-package controller
+package dto
 
 type AdminUserListResponse struct {
 	Users []AdminUserResponse `json:"users"`

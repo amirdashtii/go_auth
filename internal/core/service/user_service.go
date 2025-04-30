@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 
+	"github.com/amirdashtii/go_auth/controller/dto"
 	"github.com/amirdashtii/go_auth/infrastructure/repository"
 	"github.com/amirdashtii/go_auth/internal/core/entities"
 	"github.com/amirdashtii/go_auth/internal/core/ports"
@@ -26,7 +27,7 @@ func NewUserService() *UserService {
 	}
 }
 
-func (s *UserService) GetProfile(userID *uuid.UUID) (*entities.User, error) {
+func (s *UserService) GetProfile(userID *uuid.UUID) (*dto.UserProfileResponse, error) {
 	user, err := s.db.FindUserByID(userID)
 	if err != nil {
 		return nil, fmt.Errorf("user not found: %w", err)
@@ -37,11 +38,24 @@ func (s *UserService) GetProfile(userID *uuid.UUID) (*entities.User, error) {
 	if user.Status == entities.Deactivated {
 		return nil, fmt.Errorf("user is deactivated")
 	}
-	return user, nil
+
+	resp := dto.UserProfileResponse{
+		ID:        user.ID.String(),
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Email:     user.Email,
+	}
+	return &resp, nil
 }
 
-func (s *UserService) UpdateProfile(userID *uuid.UUID, user *entities.User) error {
-	user.ID = *userID
+func (s *UserService) UpdateProfile(userID *uuid.UUID, req *dto.UserUpdateRequest) error {
+
+	user := &entities.User{
+		ID:        *userID,
+		FirstName: req.FirstName,
+		LastName:  req.LastName,
+		Email:     req.Email,
+	}
 
 	return s.db.Update(user)
 }

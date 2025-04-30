@@ -3,9 +3,9 @@ package controller
 import (
 	"net/http"
 
+	"github.com/amirdashtii/go_auth/controller/dto"
 	"github.com/amirdashtii/go_auth/controller/middleware"
-	"github.com/amirdashtii/go_auth/controller/validators"
-	"github.com/amirdashtii/go_auth/internal/core/entities"
+	// "github.com/amirdashtii/go_auth/controller/validators"
 	"github.com/amirdashtii/go_auth/internal/core/ports"
 	"github.com/amirdashtii/go_auth/internal/core/service"
 	"github.com/gin-gonic/gin"
@@ -33,7 +33,7 @@ func NewAuthRoutes(r *gin.Engine) {
 }
 
 func (h *AuthHTTPHandler) RegisterHandler(c *gin.Context) {
-	var req RegisterRequest
+	var req dto.RegisterRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -43,17 +43,12 @@ func (h *AuthHTTPHandler) RegisterHandler(c *gin.Context) {
 		return
 	}
 
-	user := entities.User{
-		Email:     req.Email,
-		Password:  req.Password,
-	}
+	// if err := validators.ValidateUser(&req); err != nil {
+	// 	c.JSON(http.StatusBadRequest, validators.HandleValidationError(err))
+	// 	return
+	// }
 
-	if err := validators.ValidateUser(&user); err != nil {
-		c.JSON(http.StatusBadRequest, validators.HandleValidationError(err))
-		return
-	}
-
-	err := h.svc.Register(&user)
+	err := h.svc.Register(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Registration failed",
@@ -66,7 +61,7 @@ func (h *AuthHTTPHandler) RegisterHandler(c *gin.Context) {
 }
 
 func (h *AuthHTTPHandler) LoginHandler(c *gin.Context) {
-	var req LoginRequest
+	var req dto.LoginRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -76,15 +71,10 @@ func (h *AuthHTTPHandler) LoginHandler(c *gin.Context) {
 		return
 	}
 
-	valReq := validators.LoginRequest{
-		Email:    req.Email,
-		Password: req.Password,
-	}
-
-	if err := validators.ValidateLogin(&valReq); err != nil {
-		c.JSON(http.StatusBadRequest, validators.HandleValidationError(err))
-		return
-	}
+	// if err := validators.ValidateLogin(&req); err != nil {
+	// 	c.JSON(http.StatusBadRequest, validators.HandleValidationError(err))
+	// 	return
+	// }
 
 	tokens, err := h.svc.Login(&req.Email, &req.Password)
 	if err != nil {
@@ -137,7 +127,7 @@ func (h *AuthHTTPHandler) LogoutHandler(c *gin.Context) {
 }
 
 func (h *AuthHTTPHandler) RefreshTokenHandler(c *gin.Context) {
-	var req RefreshTokenRequest
+	var req dto.RefreshTokenRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{

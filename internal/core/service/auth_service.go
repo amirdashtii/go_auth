@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/amirdashtii/go_auth/config"
+	"github.com/amirdashtii/go_auth/controller/dto"
 	"github.com/amirdashtii/go_auth/infrastructure/repository"
 	"github.com/amirdashtii/go_auth/internal/core/entities"
 	"github.com/amirdashtii/go_auth/internal/core/ports"
@@ -43,20 +44,23 @@ func NewAuthService() *AuthService {
 	}
 }
 
-func (s *AuthService) Register(user *entities.User) error {
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+func (s *AuthService) Register(req *dto.RegisterRequest) error {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	user.Password = string(hashedPassword)
-	user.Status = entities.Active
-	user.Role = entities.UserRole
-	user.ID = uuid.New()
-	user.CreatedAt = time.Now()
-	user.UpdatedAt = time.Now()
+	user := entities.User{
+		Email:     req.Email,
+		Password:  string(hashedPassword),
+		Status:    entities.Active,
+		Role:      entities.UserRole,
+		ID:        uuid.New(),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
 
-	if err := s.db.Create(user); err != nil {
+	if err := s.db.Create(&user); err != nil {
 		return fmt.Errorf("failed to create user: %w", err)
 	}
 
