@@ -5,6 +5,7 @@ import (
 
 	"github.com/amirdashtii/go_auth/controller/dto"
 	"github.com/amirdashtii/go_auth/controller/middleware"
+	"github.com/amirdashtii/go_auth/controller/validators"
 	"github.com/amirdashtii/go_auth/internal/core/ports"
 	"github.com/amirdashtii/go_auth/internal/core/service"
 
@@ -81,6 +82,11 @@ func (h *UserHTTPHandler) UpdateUserProfileHandler(c *gin.Context) {
 		return
 	}
 
+	if err := validators.ValidateUserUpdateRequest(&updateReq); err != nil {
+		c.JSON(http.StatusBadRequest, validators.HandleValidationError(err))
+		return
+	}
+
 	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
@@ -124,6 +130,11 @@ func (h *UserHTTPHandler) ChangePasswordHandler(c *gin.Context) {
 			"error":   "Invalid request format",
 			"details": err.Error(),
 		})
+		return
+	}
+
+	if err := validators.ValidateChangePasswordRequest(&changePasswordReq); err != nil {
+		c.JSON(http.StatusBadRequest, validators.HandleValidationError(err))
 		return
 	}
 
