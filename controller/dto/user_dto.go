@@ -9,13 +9,13 @@ type UserProfileResponse struct {
 }
 
 type UserUpdateRequest struct {
-	PhoneNumber string `json:"phone_number" binding:"omitempty,phone"`
-	FirstName   string `json:"first_name" binding:"omitempty,min=2,max=50"`
-	LastName    string `json:"last_name" binding:"omitempty,min=2,max=50"`
-	Email       string `json:"email" binding:"omitempty,email"`
+	PhoneNumber string `json:"phone_number" validate:"omitempty,phone"`
+	FirstName   string `json:"first_name" validate:"omitempty,name"`
+	LastName    string `json:"last_name" validate:"omitempty,name"`
+	Email       string `json:"email" validate:"omitempty,email"`
 }
 
 type ChangePasswordRequest struct {
-	OldPassword string `json:"old_password" binding:"required"`
-	NewPassword string `json:"new_password" binding:"required,min=8"`
+	OldPassword string `json:"old_password" validate:"required,password"`
+	NewPassword string `json:"new_password" validate:"required,password"`
 }

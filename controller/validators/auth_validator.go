@@ -13,18 +13,18 @@ var authValidate *validator.Validate
 
 func init() {
 	authValidate = validator.New()
-	authValidate.RegisterValidation("phone", validatePhoneNumber)
-	authValidate.RegisterValidation("password", validateAuthPassword)
+	authValidate.RegisterValidation("phone", ValidatePhoneNumber)
+	authValidate.RegisterValidation("password", ValidateAuthPassword)
 }
 
-func validatePhoneNumber(fl validator.FieldLevel) bool {
+func ValidatePhoneNumber(fl validator.FieldLevel) bool {
 	phone := fl.Field().String()
 	pattern := `^09[0-9]{9}$`
 	matched, _ := regexp.MatchString(pattern, phone)
 	return matched
 }
 
-func validateAuthPassword(fl validator.FieldLevel) bool {
+func ValidateAuthPassword(fl validator.FieldLevel) bool {
 	password := fl.Field().String()
 	if len(password) < 8 {
 		return false
@@ -33,9 +33,8 @@ func validateAuthPassword(fl validator.FieldLevel) bool {
 	hasUpper := regexp.MustCompile(`[A-Z]`).MatchString(password)
 	hasLower := regexp.MustCompile(`[a-z]`).MatchString(password)
 	hasNumber := regexp.MustCompile(`[0-9]`).MatchString(password)
-	hasSpecial := regexp.MustCompile(`[!@#$%^&*(),.?":{}|<>]`).MatchString(password)
 	
-	return hasUpper && hasLower && hasNumber && hasSpecial
+	return hasUpper && hasLower && hasNumber
 }
 
 func ValidateRegisterRequest(req *dto.RegisterRequest) error {
