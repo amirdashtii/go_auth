@@ -6,7 +6,7 @@ import (
 	"github.com/amirdashtii/go_auth/controller/dto"
 	"github.com/amirdashtii/go_auth/controller/middleware"
 
-	// "github.com/amirdashtii/go_auth/controller/validators"
+	"github.com/amirdashtii/go_auth/controller/validators"
 	"github.com/amirdashtii/go_auth/internal/core/ports"
 	"github.com/amirdashtii/go_auth/internal/core/service"
 	"github.com/gin-gonic/gin"
@@ -44,10 +44,10 @@ func (h *AuthHTTPHandler) RegisterHandler(c *gin.Context) {
 		return
 	}
 
-	// if err := validators.ValidateUser(&req); err != nil {
-	// 	c.JSON(http.StatusBadRequest, validators.HandleValidationError(err))
-	// 	return
-	// }
+	if err := validators.ValidateRegisterRequest(&req); err != nil {
+		c.JSON(http.StatusBadRequest, validators.HandleValidationError(err))
+		return
+	}
 
 	err := h.svc.Register(&req)
 	if err != nil {
@@ -72,10 +72,10 @@ func (h *AuthHTTPHandler) LoginHandler(c *gin.Context) {
 		return
 	}
 
-	// if err := validators.ValidateLogin(&req); err != nil {
-	// 	c.JSON(http.StatusBadRequest, validators.HandleValidationError(err))
-	// 	return
-	// }
+	if err := validators.ValidateLoginRequest(req); err != nil {
+		c.JSON(http.StatusBadRequest, validators.HandleValidationError(err))
+		return
+	}
 
 	tokens, err := h.svc.Login(req)
 	if err != nil {
@@ -135,6 +135,11 @@ func (h *AuthHTTPHandler) RefreshTokenHandler(c *gin.Context) {
 			"error":   "Invalid request format",
 			"details": err.Error(),
 		})
+		return
+	}
+
+	if err := validators.ValidateRefreshTokenRequest(&req); err != nil {
+		c.JSON(http.StatusBadRequest, validators.HandleValidationError(err))
 		return
 	}
 

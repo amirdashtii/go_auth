@@ -1,57 +1,76 @@
 package validators
 
-// import (
-// 	"github.com/amirdashtii/go_auth/controller/dto"
-// 	"github.com/amirdashtii/go_auth/internal/core/entities"
-// 	"github.com/go-playground/validator/v10"
-// )
+import (
+	"fmt"
+	"regexp"
+	"strings"
 
-// func ValidateUser(user *dto.RegisterRequest) error {
-// 	validate := validator.New()
-// 	RegisterValidator(validate)
-// 	return validate.Struct(user)
-// }
+	"github.com/amirdashtii/go_auth/controller/dto"
+	"github.com/go-playground/validator/v10"
+)
 
-// func RegisterValidator(v *validator.Validate) {
-// 	v.RegisterStructValidation(RegisterValidation, entities.User{})
-// 	v.RegisterValidation("password", validatePassword)
-// }
+var validate *validator.Validate
 
-// func RegisterValidation(sl validator.StructLevel) {
-// 	user := sl.Current().Interface().(entities.User)
+func init() {
+	validate = validator.New()
+	validate.RegisterValidation("phone", validatePhoneNumber)
+	validate.RegisterValidation("password", validatePassword)
+}
 
-// 	// Email validation
-// 	if err := sl.Validator().Var(user.Email, "required,email"); err != nil {
-// 		sl.ReportError(user.Email, "email", "Email", "Email is required and must be in a valid format", "")
-// 	}
+func validatePhoneNumber(fl validator.FieldLevel) bool {
+	phone := fl.Field().String()
+	pattern := `^09[0-9]{9}$`
+	matched, _ := regexp.MatchString(pattern, phone)
+	return matched
+}
 
-// 	// Password validation
-// 	if err := sl.Validator().Var(user.Password, "required,password"); err != nil {
-// 		sl.ReportError(user.Password, "password", "Password", "Password must be at least 8 characters and contain uppercase, lowercase letters and numbers", "")
-// 	}
-// }
+func validatePassword(fl validator.FieldLevel) bool {
+	password := fl.Field().String()
+	if len(password) < 8 {
+		return false
+	}
+	
+	hasUpper := regexp.MustCompile(`[A-Z]`).MatchString(password)
+	hasLower := regexp.MustCompile(`[a-z]`).MatchString(password)
+	hasNumber := regexp.MustCompile(`[0-9]`).MatchString(password)
+	hasSpecial := regexp.MustCompile(`[!@#$%^&*(),.?":{}|<>]`).MatchString(password)
+	
+	return hasUpper && hasLower && hasNumber && hasSpecial
+}
 
-// func ValidateLogin(req *dto.LoginRequest) error {
-// 	validate := validator.New()
-// 	LoginValidator(validate)
-// 	return validate.Struct(req)
-// }
+func ValidateRegisterRequest(req *dto.RegisterRequest) error {
+	if err := validate.Struct(req); err != nil {
+		return err
+	}
+	return nil
+}
 
-// func LoginValidator(v *validator.Validate) {
-// 	v.RegisterStructValidation(LoginValidation, entities.User{})
-// 	v.RegisterValidation("password", validatePassword)
-// }
+func ValidateLoginRequest(req *dto.LoginRequest) error {
+	if err := validate.Struct(req); err != nil {
+		return err
+	}
+	return nil
+}
 
-// func LoginValidation(sl validator.StructLevel) {
-// 	user := sl.Current().Interface().(entities.User)
+func ValidateRefreshTokenRequest(req *dto.RefreshTokenRequest) error {
+	if err := validate.Struct(req); err != nil {
+		return err
+	}
+	return nil
+}
 
-// 	// Email validation
-// 	if err := sl.Validator().Var(user.Email, "required,email"); err != nil {
-// 		sl.ReportError(user.Email, "email", "Email", "Email is required and must be in a valid format", "")
-// 	}
-
-// 	// Password validation
-// 	if err := sl.Validator().Var(user.Password, "required"); err != nil {
-// 		sl.ReportError(user.Password, "password", "Password", "Password is required", "")
-// 	}
-// }
+func HandleValidationError(err error) map[string]interface{} {
+	validationErrors := make(map[string]interface{})
+	
+	if errs, ok := err.(validator.ValidationErrors); ok {
+		for _, e := range errs {
+			field := strings.ToLower(e.Field())
+			validationErrors[field] = fmt.Sprintf("Invalid %s: %s", field, e.Tag())
+		}
+	}
+	
+	return map[string]interface{}{
+		"error":   "Validation failed",
+		"details": validationErrors,
+	}
+}
