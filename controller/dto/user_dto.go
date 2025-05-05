@@ -9,10 +9,10 @@ type UserProfileResponse struct {
 }
 
 type UserUpdateRequest struct {
-	PhoneNumber string `json:"phone_number"`
-	FirstName   string `json:"first_name"`
-	LastName    string `json:"last_name"`
-	Email       string `json:"email"`
+	PhoneNumber string `json:"phone_number" binding:"omitempty,phone"`
+	FirstName   string `json:"first_name" binding:"omitempty,min=2,max=50"`
+	LastName    string `json:"last_name" binding:"omitempty,min=2,max=50"`
+	Email       string `json:"email" binding:"omitempty,email"`
 }
 
 type ChangePasswordRequest struct {

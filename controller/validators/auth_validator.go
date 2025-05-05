@@ -9,12 +9,12 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-var validate *validator.Validate
+var authValidate *validator.Validate
 
 func init() {
-	validate = validator.New()
-	validate.RegisterValidation("phone", validatePhoneNumber)
-	validate.RegisterValidation("password", validatePassword)
+	authValidate = validator.New()
+	authValidate.RegisterValidation("phone", validatePhoneNumber)
+	authValidate.RegisterValidation("password", validateAuthPassword)
 }
 
 func validatePhoneNumber(fl validator.FieldLevel) bool {
@@ -24,7 +24,7 @@ func validatePhoneNumber(fl validator.FieldLevel) bool {
 	return matched
 }
 
-func validatePassword(fl validator.FieldLevel) bool {
+func validateAuthPassword(fl validator.FieldLevel) bool {
 	password := fl.Field().String()
 	if len(password) < 8 {
 		return false
@@ -39,21 +39,21 @@ func validatePassword(fl validator.FieldLevel) bool {
 }
 
 func ValidateRegisterRequest(req *dto.RegisterRequest) error {
-	if err := validate.Struct(req); err != nil {
+	if err := authValidate.Struct(req); err != nil {
 		return err
 	}
 	return nil
 }
 
 func ValidateLoginRequest(req *dto.LoginRequest) error {
-	if err := validate.Struct(req); err != nil {
+	if err := authValidate.Struct(req); err != nil {
 		return err
 	}
 	return nil
 }
 
 func ValidateRefreshTokenRequest(req *dto.RefreshTokenRequest) error {
-	if err := validate.Struct(req); err != nil {
+	if err := authValidate.Struct(req); err != nil {
 		return err
 	}
 	return nil

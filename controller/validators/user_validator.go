@@ -1,38 +1,49 @@
 package validators
 
+import (
+	"fmt"
+	"regexp"
 
+	"github.com/amirdashtii/go_auth/controller/dto"
+	"github.com/go-playground/validator/v10"
+)
 
+var userValidate *validator.Validate
 
+func init() {
+	userValidate = validator.New()
+	userValidate.RegisterValidation("password", validateAuthPassword)
+}
 
-// func ChangePasswordValidation(sl validator.StructLevel) {
-// 	req := sl.Current().Interface().(ChangePasswordRequest)
+func validateUserPassword(fl validator.FieldLevel) bool {
+	password := fl.Field().String()
+	if len(password) < 8 {
+		return false
+	}
+	
+	hasUpper := regexp.MustCompile(`[A-Z]`).MatchString(password)
+	hasLower := regexp.MustCompile(`[a-z]`).MatchString(password)
+	hasNumber := regexp.MustCompile(`[0-9]`).MatchString(password)
+	hasSpecial := regexp.MustCompile(`[!@#$%^&*(),.?":{}|<>]`).MatchString(password)
+	
+	return hasUpper && hasLower && hasNumber && hasSpecial
+}
 
-// 	// Old password validation
-// 	if err := sl.Validator().Var(req.OldPassword, "required"); err != nil {
-// 		sl.ReportError(req.OldPassword, "old_password", "OldPassword", "Current password is required", "")
-// 	}
+func ValidateUserUpdateRequest(req *dto.UserUpdateRequest) error {
+	if err := userValidate.Struct(req); err != nil {
+		return err
+	}
+	return nil
+}
 
-// 	// New password validation
-// 	if err := sl.Validator().Var(req.NewPassword, "required,password"); err != nil {
-// 		sl.ReportError(req.NewPassword, "new_password", "NewPassword", "New password must be at least 8 characters and contain uppercase, lowercase letters and numbers", "")
-// 	}
-// }
+func ValidateChangePasswordRequest(req *dto.ChangePasswordRequest) error {
+	if err := userValidate.Struct(req); err != nil {
+		return err
+	}
 
-// type UpdateProfileRequest struct {
-// 	Email string `json:"email" validate:"omitempty,email"`
-// }
+	if req.NewPassword == req.OldPassword {
+		return fmt.Errorf("new password must be different from current password")
+	}
 
-// func UpdateProfileValidator(v *validator.Validate) {
-// 	v.RegisterStructValidation(UpdateProfileValidation, UpdateProfileRequest{})
-// }
-
-// func UpdateProfileValidation(sl validator.StructLevel) {
-// 	req := sl.Current().Interface().(UpdateProfileRequest)
-
-// 	// Email validation
-// 	if req.Email != "" {
-// 		if err := sl.Validator().Var(req.Email, "email"); err != nil {
-// 			sl.ReportError(req.Email, "email", "Email", "Email must be in a valid format", "")
-// 		}
-// 	}
-// }
+	return nil
+}
