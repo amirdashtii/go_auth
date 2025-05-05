@@ -5,6 +5,7 @@ import (
 
 	"github.com/amirdashtii/go_auth/controller/dto"
 	"github.com/amirdashtii/go_auth/controller/middleware"
+	"github.com/amirdashtii/go_auth/controller/validators"
 	"github.com/amirdashtii/go_auth/internal/core/entities"
 	"github.com/amirdashtii/go_auth/internal/core/ports"
 	"github.com/amirdashtii/go_auth/internal/core/service"
@@ -52,12 +53,22 @@ func (h *AdminHTTPHandler) GetUsersHandler(c *gin.Context) {
 		return
 	}
 
-	status := entities.ParseStatusType(c.DefaultQuery("status", "active"))
-	roleFilter := entities.ParseRoleType(c.DefaultQuery("role", "user"))
-	sort := c.DefaultQuery("sort", "created_at")
-	order := c.DefaultQuery("order", "desc")
+	req:= dto.AdminGetUsersRequest{
+		Status: c.DefaultQuery("status", "active"),
+		Role: c.DefaultQuery("role", "user"),
+		Sort: c.DefaultQuery("sort", "created_at"),
+		Order: c.DefaultQuery("order", "desc"),
+	}
 
-	resp, err := h.svc.GetUsers(&status, &roleFilter, &sort, &order)
+
+	if err := validators.ValidateGetUsersRequest(&req); err != nil {
+		c.JSON(400, validators.HandleAdminValidationError(err))
+	}
+
+	statuesType := entities.ParseStatusType(req.Status)
+	roleType := entities.ParseRoleType(req.Role)
+
+	resp, err := h.svc.GetUsers(&statuesType, &roleType, &req.Sort, &req.Order)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to retrieve users", "details": err.Error()})
 		return
@@ -125,6 +136,10 @@ func (h *AdminHTTPHandler) UpdateUserHandler(c *gin.Context) {
 		return
 	}
 
+	if err := validators.ValidateUpdateUserRequest(&updateReq);err != nil {
+		c.JSON(400 ,validators.HandleAdminValidationError(err))
+	}
+
 	err = h.svc.AdminUpdateUser(&userID, &updateReq)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to update user", "details": err.Error()})
@@ -163,6 +178,11 @@ func (h *AdminHTTPHandler) ChangeUserRoleHandler(c *gin.Context) {
 		return
 	}
 
+	if err := validators.ValidateChangeRoleRequest(&updateRoleReq); err != nil {
+		c.JSON(400, validators.HandleAdminValidationError(err))
+		return
+	}
+
 	updateRole := entities.ParseRoleType(updateRoleReq.Role)
 	err = h.svc.ChangeUserRole(&userID, &updateRole)
 	if err != nil {
@@ -198,6 +218,11 @@ func (h *AdminHTTPHandler) ChangeUserStatusHandler(c *gin.Context) {
 	var updateStatusReq dto.AdminUserUpdateStatusRequest
 	if err := c.ShouldBindJSON(&updateStatusReq); err != nil {
 		c.JSON(400, gin.H{"error": "Invalid request", "details": err.Error()})
+		return
+	}
+	
+	if err := validators.ValidateChangeStatusRequest(&updateStatusReq); err != nil {
+		c.JSON(400, validators.HandleAdminValidationError(err))
 		return
 	}
 
