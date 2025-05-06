@@ -40,6 +40,9 @@ func (r *PGUserRepository) FindUserByID(id *uuid.UUID) (*entities.User, error) {
 	)
 
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, err
+		}
 		return nil, err
 	}
 
@@ -83,11 +86,17 @@ func (r *PGUserRepository) Update(user *entities.User) error {
 	args = append(args, user.ID)
 
 	_, err := r.db.Exec(query, args...)
-	return err
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r *PGUserRepository) Delete(id *uuid.UUID) error {
 	query := `UPDATE users SET deleted_at = NOW(), status = $2 WHERE id = $1`
 	_, err := r.db.Exec(query, id, entities.Deleted)
-	return err
+	if err != nil {
+		return err
+	}
+	return nil
 }

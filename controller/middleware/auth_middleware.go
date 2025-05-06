@@ -1,11 +1,11 @@
 package middleware
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/amirdashtii/go_auth/config"
 	"github.com/amirdashtii/go_auth/internal/core/entities"
+	"github.com/amirdashtii/go_auth/internal/core/errors"
 	"github.com/amirdashtii/go_auth/internal/core/service"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -15,11 +15,10 @@ func AuthMiddleware() gin.HandlerFunc {
 	authService := service.NewAuthService()
 
 	return func(c *gin.Context) {
-
 		token := c.GetHeader("Authorization")
 		if token == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "Authorization header is required",
+				"error": errors.New(errors.AuthenticationError, "Authorization header is required", "هدر احراز هویت الزامی است", nil),
 			})
 			c.Abort()
 			return
@@ -32,7 +31,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		config, err := config.LoadConfig()
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": fmt.Sprintf("error loading config: %v", err),
+				"error": errors.New(errors.InternalError, "error loading config", "خطا در بارگذاری تنظیمات", err),
 			})
 			c.Abort()
 			return
@@ -45,7 +44,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		})
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": fmt.Sprintf("failed to parse token: %v", err),
+				"error": errors.New(errors.AuthenticationError, "failed to parse token", "خطا در تجزیه توکن", err),
 			})
 			c.Abort()
 			return
@@ -54,7 +53,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		claims, ok := parsedToken.Claims.(jwt.MapClaims)
 		if !ok {
 			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "invalid token claims",
+				"error": errors.New(errors.AuthenticationError, "invalid token claims", "اطلاعات توکن نامعتبر است", nil),
 			})
 			c.Abort()
 			return
@@ -63,7 +62,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		tokenType := claims["token_type"].(string)
 		if tokenType != "access" {
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "Invalid token type",
+				"error": errors.New(errors.AuthenticationError, "invalid token type", "نوع توکن نامعتبر است", nil),
 			})
 			c.Abort()
 			return
@@ -74,8 +73,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		err = authService.ValidateToken(userID, token)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"error":   "Invalid or expired token",
-				"details": err.Error(),
+				"error": err,
 			})
 			c.Abort()
 			return
@@ -93,9 +91,8 @@ func AuthMiddleware() gin.HandlerFunc {
 			roleString = "Unknown"
 		}
 
-		c.Set("role", roleString)
 		c.Set("user_id", userID)
-
+		c.Set("role", roleString)
 		c.Next()
 	}
 }

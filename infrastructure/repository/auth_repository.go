@@ -17,15 +17,6 @@ func NewPGAuthRepository(db *sql.DB) ports.AuthRepository {
 }
 
 func (r *PGAuthRepository) Create(user *entities.User) error {
-	// existingUser, err := r.FindByEmail(&user.Email)
-	// if err != nil && err != sql.ErrNoRows {
-	// 	return err
-	// }
-
-	// if existingUser != nil {
-	// 	return errors.New("user already exists")
-	// }
-
 	query := `
 		INSERT INTO users (id, phone_number, password, first_name, last_name, email, status, role, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -44,7 +35,11 @@ func (r *PGAuthRepository) Create(user *entities.User) error {
 		user.UpdatedAt,
 	)
 
-	return err
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r *PGAuthRepository) FindUserByPhoneNumber(phoneNumber *string) (*entities.User, error) {
@@ -70,6 +65,9 @@ func (r *PGAuthRepository) FindUserByPhoneNumber(phoneNumber *string) (*entities
 	)
 
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, err
+		}
 		return nil, err
 	}
 
@@ -99,6 +97,9 @@ func (r *PGAuthRepository) FindUserByID(id uuid.UUID) (*entities.User, error) {
 	)
 
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, err
+		}
 		return nil, err
 	}
 

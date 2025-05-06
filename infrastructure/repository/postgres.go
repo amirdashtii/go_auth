@@ -32,7 +32,7 @@ func runMigrations(config *config.Config) {
 func NewPGRepository() (*PGRepository, error) {
 	config, err := config.LoadConfig()
 	if err != nil {
-		log.Fatalf("Error loading config: %v", err)
+		return nil, err
 	}
 
 	runMigrations(config)

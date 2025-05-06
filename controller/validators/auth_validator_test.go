@@ -225,27 +225,3 @@ func TestValidateRefreshTokenRequest(t *testing.T) {
 		})
 	}
 }
-
-func TestHandleValidationError(t *testing.T) {
-	tests := []struct {
-		name     string
-		err      error
-		expected map[string]interface{}
-	}{
-		{
-			name: "validation error",
-			err:  validator.ValidationErrors{},
-			expected: map[string]interface{}{
-				"error":   "Validation failed",
-				"details": map[string]interface{}{},
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := HandleValidationError(tt.err)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-} 

@@ -1,8 +1,7 @@
 package config
 
 import (
-	"fmt"
-
+	"github.com/amirdashtii/go_auth/internal/core/errors"
 	"github.com/spf13/viper"
 )
 
@@ -41,7 +40,6 @@ func LoadConfig() (*Config, error) {
 	v.SetDefault("redis.Addr", "localhost:6379")
 	v.SetDefault("redis.Password", "")
 	v.SetDefault("redis.DB", 0)
-	
 
 	// Read from YAML file
 	v.SetConfigName("development")
@@ -49,7 +47,7 @@ func LoadConfig() (*Config, error) {
 	v.AddConfigPath("./config")
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return nil, fmt.Errorf("failed to read YAML config file: %w", err)
+			return nil, errors.New(errors.InternalError, "failed to read YAML config file", "خطا در خواندن فایل YAML", nil)
 		}
 	}
 
@@ -59,7 +57,7 @@ func LoadConfig() (*Config, error) {
 	v.AddConfigPath("./config")
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return nil, fmt.Errorf("failed to read .env file: %wformat", err)
+			return nil, errors.New(errors.InternalError, "failed to read .env file", "خطا در خواندن فایل .env", nil)
 		}
 	} else {
 		v.AutomaticEnv()
@@ -74,7 +72,7 @@ func LoadConfig() (*Config, error) {
 
 	var config Config
 	if err := v.Unmarshal(&config); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+		return nil, errors.New(errors.InternalError, "failed to unmarshal config", "خطا در خواندن کانفیگ", nil)
 	}
 
 	return &config, nil

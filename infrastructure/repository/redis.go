@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/amirdashtii/go_auth/config"
 	"github.com/redis/go-redis/v9"
@@ -15,7 +14,7 @@ type RedisRepository struct {
 func NewRedisRepository() (*RedisRepository, error) {
 	config, err := config.LoadConfig()
 	if err != nil {
-		return nil, fmt.Errorf("error loading config: %v", err)
+		return nil, err
 	}
 	client := redis.NewClient(&redis.Options{
 		Addr:     config.Redis.Addr,
@@ -25,7 +24,7 @@ func NewRedisRepository() (*RedisRepository, error) {
 	ctx := context.Background()
 	_, err = client.Ping(ctx).Result()
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
+		return nil, err
 	}
 
 	return &RedisRepository{client: client}, nil

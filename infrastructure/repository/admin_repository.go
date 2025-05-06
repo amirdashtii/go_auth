@@ -19,7 +19,6 @@ func NewPGAdminRepository(db *sql.DB) ports.AdminRepository {
 }
 
 func (r *PGAdminRepository) FindUsers(status *entities.StatusType, role *entities.RoleType, sort, order *string) ([]*entities.User, error) {
-
 	query := fmt.Sprintf(`
 	SELECT * FROM users
 	WHERE status = $1 AND role = $2
@@ -33,13 +32,11 @@ func (r *PGAdminRepository) FindUsers(status *entities.StatusType, role *entitie
 
 	users := []*entities.User{}
 	for rows.Next() {
-		fmt.Println(rows)
 		var user entities.User
 		err := rows.Scan(&user.ID, &user.PhoneNumber, &user.FirstName, &user.LastName, &user.Email, &user.Password, &user.Status, &user.Role, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt)
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println(user)
 		users = append(users, &user)
 	}
 	if err := rows.Err(); err != nil {
@@ -54,6 +51,9 @@ func (r *PGAdminRepository) AdminGetUserByID(id *uuid.UUID) (*entities.User, err
 	var user entities.User
 	err := row.Scan(&user.ID, &user.PhoneNumber, &user.FirstName, &user.LastName, &user.Email, &user.Password, &user.Status, &user.Role, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, err
+		}
 		return nil, err
 	}
 	return &user, nil
@@ -91,7 +91,10 @@ func (r *PGAdminRepository) AdminUpdateUser(user *entities.User) error {
 	args = append(args, user.ID)
 
 	_, err := r.db.Exec(query, args...)
-	return err
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r *PGAdminRepository) AdminChangeUserRole(id *uuid.UUID, role *entities.RoleType) error {

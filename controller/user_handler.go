@@ -6,6 +6,7 @@ import (
 	"github.com/amirdashtii/go_auth/controller/dto"
 	"github.com/amirdashtii/go_auth/controller/middleware"
 	"github.com/amirdashtii/go_auth/controller/validators"
+	"github.com/amirdashtii/go_auth/internal/core/errors"
 	"github.com/amirdashtii/go_auth/internal/core/ports"
 	"github.com/amirdashtii/go_auth/internal/core/service"
 
@@ -39,171 +40,150 @@ func (h *UserHTTPHandler) GetUserProfileHandler(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "User ID not found",
-		})
-		return
-	}
-	userIDStr, ok := userID.(string)
-	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Invalid user ID type",
+			"error": errors.New(errors.AuthenticationError, "user not authenticated", "کاربر احراز هویت نشده است", nil),
 		})
 		return
 	}
 
-	uuid, err := uuid.Parse(userIDStr)
+	userIDUUID, err := uuid.Parse(userID.(string))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid user ID format",
+			"error": errors.New(errors.ValidationError, "invalid user ID", "شناسه کاربر نامعتبر است", err),
 		})
 		return
 	}
 
-	resp, err := h.svc.GetProfile(&uuid)
-
+	profile, err := h.svc.GetProfile(&userIDUUID)
 	if err != nil {
+		if errors.IsNotFoundError(err) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": err,
+			})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to retrieve user profile",
+			"error": err,
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, resp)
+	c.JSON(http.StatusOK, gin.H{"profile": profile})
 }
 
 func (h *UserHTTPHandler) UpdateUserProfileHandler(c *gin.Context) {
-	var updateReq dto.UserUpdateRequest
-
-	if err := c.ShouldBindJSON(&updateReq); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Invalid request format",
-			"details": err.Error(),
-		})
-		return
-	}
-
-	if err := validators.ValidateUserUpdateRequest(&updateReq); err != nil {
-		c.JSON(http.StatusBadRequest, validators.HandleValidationError(err))
-		return
-	}
-
 	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "User ID not found",
-		})
-		return
-	}
-	userIDStr, ok := userID.(string)
-	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Invalid user ID type",
+			"error": errors.New(errors.AuthenticationError, "user not authenticated", "کاربر احراز هویت نشده است", nil),
 		})
 		return
 	}
 
-	uuid, err := uuid.Parse(userIDStr)
+	userIDUUID, err := uuid.Parse(userID.(string))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid user ID format",
+			"error": errors.New(errors.ValidationError, "invalid user ID", "شناسه کاربر نامعتبر است", err),
 		})
 		return
 	}
 
-	err = h.svc.UpdateProfile(&uuid, &updateReq)
+	var req dto.UserUpdateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": errors.New(errors.ValidationError, "invalid request body", "بدنه درخواست نامعتبر است", err),
+		})
+		return
+	}
+
+	err = validators.ValidateUserUpdateRequest(&req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "Failed to update profile",
-			"details": err.Error(),
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err,
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Profile updated successfully"})
+	if err := h.svc.UpdateProfile(&userIDUUID, &req); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Profile updated successfully",
+	})
 }
 
 func (h *UserHTTPHandler) ChangePasswordHandler(c *gin.Context) {
-	var changePasswordReq dto.ChangePasswordRequest
-
-	if err := c.ShouldBindJSON(&changePasswordReq); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Invalid request format",
-			"details": err.Error(),
-		})
-		return
-	}
-
-	if err := validators.ValidateChangePasswordRequest(&changePasswordReq); err != nil {
-		c.JSON(http.StatusBadRequest, validators.HandleValidationError(err))
-		return
-	}
-
 	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "User ID not found",
-		})
-		return
-	}
-	userIDStr, ok := userID.(string)
-	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Invalid user ID type",
+			"error": errors.New(errors.AuthenticationError, "user not authenticated", "کاربر احراز هویت نشده است", nil),
 		})
 		return
 	}
 
-	uuid, err := uuid.Parse(userIDStr)
+	userIDUUID, err := uuid.Parse(userID.(string))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid user ID format",
+			"error": errors.New(errors.ValidationError, "invalid user ID", "شناسه کاربر نامعتبر است", err),
 		})
 		return
 	}
 
-	err = h.svc.ChangePassword(&uuid, &changePasswordReq)
+	var req dto.ChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": errors.New(errors.ValidationError, "invalid request body", "بدنه درخواست نامعتبر است", err),
+		})
+		return
+	}
+	err = validators.ValidateChangePasswordRequest(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Failed to change password",
-			"details": err.Error(),
+			"error": err,
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Password changed successfully"})
+	if err := h.svc.ChangePassword(&userIDUUID, &req); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Password changed successfully",
+	})
 }
 
 func (h *UserHTTPHandler) DeleteUserProfileHandler(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "User ID not found",
+			"error": errors.New(errors.AuthenticationError, "user not authenticated", "کاربر احراز هویت نشده است", nil),
 		})
 		return
 	}
-	userIDStr, ok := userID.(string)
-	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Invalid user ID type",
-		})
-		return
-	}
-	uuid, err := uuid.Parse(userIDStr)
+
+	userIDUUID, err := uuid.Parse(userID.(string))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid user ID format",
+			"error": errors.New(errors.ValidationError, "invalid user ID", "شناسه کاربر نامعتبر است", err),
 		})
 		return
 	}
 
-	err = h.svc.DeleteProfile(&uuid)
-	if err != nil {
+	if err := h.svc.DeleteProfile(&userIDUUID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "Failed to delete profile",
-			"details": err.Error(),
+			"error": err,
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Profile deleted successfully"})
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Profile deleted successfully",
+	})
 }

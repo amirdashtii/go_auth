@@ -7,6 +7,7 @@ import (
 	"github.com/amirdashtii/go_auth/controller/middleware"
 
 	"github.com/amirdashtii/go_auth/controller/validators"
+	"github.com/amirdashtii/go_auth/internal/core/errors"
 	"github.com/amirdashtii/go_auth/internal/core/ports"
 	"github.com/amirdashtii/go_auth/internal/core/service"
 	"github.com/gin-gonic/gin"
@@ -38,22 +39,23 @@ func (h *AuthHTTPHandler) RegisterHandler(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Invalid request format",
-			"details": err.Error(),
+			"error": errors.New(errors.ValidationError, "invalid request body", "بدنه درخواست نامعتبر است", err),
 		})
 		return
 	}
 
 	if err := validators.ValidateRegisterRequest(&req); err != nil {
-		c.JSON(http.StatusBadRequest, validators.HandleValidationError(err))
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err,
+		})
 		return
 	}
 
 	err := h.svc.Register(&req)
+
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Registration failed",
-			"details": err.Error(),
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err,
 		})
 		return
 	}
@@ -66,41 +68,34 @@ func (h *AuthHTTPHandler) LoginHandler(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Invalid request format",
-			"details": err.Error(),
+			"error": errors.New(errors.ValidationError, "invalid request body", "بدنه درخواست نامعتبر است", err),
 		})
 		return
 	}
 
 	if err := validators.ValidateLoginRequest(req); err != nil {
-		c.JSON(http.StatusBadRequest, validators.HandleValidationError(err))
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": errors.New(errors.ValidationError, "validation error", "خطای اعتبارسنجی", err),
+		})
 		return
 	}
 
 	tokens, err := h.svc.Login(req)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error":   "Login failed",
-			"details": err.Error(),
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err,
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Login successful",
-		"tokens": gin.H{
-			"access_token":  tokens.AccessToken,
-			"refresh_token": tokens.RefreshToken,
-		},
-	})
+	c.JSON(http.StatusOK, gin.H{"tokens": tokens})
 }
 
 func (h *AuthHTTPHandler) LogoutHandler(c *gin.Context) {
-
 	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "User ID not found",
+			"error": errors.New(errors.AuthenticationError, "user not authenticated", "کاربر احراز هویت نشده است", nil),
 		})
 		return
 	}
@@ -114,16 +109,16 @@ func (h *AuthHTTPHandler) LogoutHandler(c *gin.Context) {
 	}
 
 	err := h.svc.Logout(userIDStr)
+
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error":   "Logout failed",
-			"details": err.Error(),
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err,
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Logout successful",
+		"message": "Logged out successfully",
 	})
 }
 
@@ -132,31 +127,25 @@ func (h *AuthHTTPHandler) RefreshTokenHandler(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Invalid request format",
-			"details": err.Error(),
+			"error": errors.New(errors.ValidationError, "invalid request body", "بدنه درخواست نامعتبر است", err),
 		})
 		return
 	}
 
 	if err := validators.ValidateRefreshTokenRequest(&req); err != nil {
-		c.JSON(http.StatusBadRequest, validators.HandleValidationError(err))
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": errors.New(errors.ValidationError, "validation error", "خطای اعتبارسنجی", err),
+		})	 
 		return
 	}
 
 	tokens, err := h.svc.RefreshToken(req.RefreshToken)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error":   "Token refresh failed",
-			"details": err.Error(),
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err,
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Token refreshed successfully",
-		"tokens": gin.H{
-			"access_token":  tokens.AccessToken,
-			"refresh_token": tokens.RefreshToken,
-		},
-	})
+	c.JSON(http.StatusOK, gin.H{"tokens": tokens})
 }

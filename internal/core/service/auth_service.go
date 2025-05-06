@@ -10,6 +10,7 @@ import (
 	"github.com/amirdashtii/go_auth/controller/dto"
 	"github.com/amirdashtii/go_auth/infrastructure/repository"
 	"github.com/amirdashtii/go_auth/internal/core/entities"
+	"github.com/amirdashtii/go_auth/internal/core/errors"
 	"github.com/amirdashtii/go_auth/internal/core/ports"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -47,7 +48,7 @@ func NewAuthService() *AuthService {
 func (s *AuthService) Register(req *dto.RegisterRequest) error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return fmt.Errorf("failed to hash password: %w", err)
+		return errors.New(errors.InternalError, "failed to hash password", "خطا در رمزنگاری رمز عبور", nil)
 	}
 
 	user := entities.User{
@@ -61,7 +62,7 @@ func (s *AuthService) Register(req *dto.RegisterRequest) error {
 	}
 
 	if err := s.db.Create(&user); err != nil {
-		return fmt.Errorf("failed to create user: %w", err)
+		return errors.New(errors.InternalError, "failed to create user", "خطا در ایجاد کاربر", nil)
 	}
 
 	return nil
@@ -69,71 +70,73 @@ func (s *AuthService) Register(req *dto.RegisterRequest) error {
 
 func (s *AuthService) Login(loginReq *dto.LoginRequest) (*entities.TokenPair, error) {
 	user, err := s.db.FindUserByPhoneNumber(&loginReq.PhoneNumber)
+	// TODO
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("user not found: %w", err)
+			return nil, errors.New(errors.NotFoundError, "user not found", "کاربر یافت نشد", nil)
 		}
-		return nil, fmt.Errorf("failed to find user: %w", err)
+		return nil, errors.New(errors.InternalError, "failed to find user", "خطا در جستجوی کاربر", nil)
 	}
 	if user.Status == entities.Deleted {
-		return nil, fmt.Errorf("user not found")
+		return nil, errors.New(errors.NotFoundError, "user not found", "کاربر یافت نشد", nil)
 	}
 	if user.Status == entities.Deactivated {
-		return nil, fmt.Errorf("user is deactivated")
+		return nil, errors.New(errors.AuthenticationError, "user is deactivated", "حساب کاربری غیرفعال است", nil)
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginReq.Password)); err != nil {
-		return nil, fmt.Errorf("invalid password: %w", err)
+		return nil, errors.New(errors.AuthenticationError, "invalid password", "رمز عبور نامعتبر است", nil)
 	}
 
 	if user.Status != entities.Active {
-		return nil, fmt.Errorf("user account is not active: %w", err)
+		return nil, errors.New(errors.AuthenticationError, "user account is not active", "حساب کاربری فعال نیست", nil)
 	}
 
 	tokenPair, err := s.createTokenPair(user)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create token pair: %w", err)
+		return nil, err
 	}
 
 	return tokenPair, nil
 }
 
 func (s *AuthService) Logout(userID string) error {
-
 	err := s.redis.RemoveToken(userID + ":access")
 	if err != nil {
-		return err
+		return errors.New(errors.InternalError, "failed to remove access token", "خطا در حذف توکن دسترسی", nil)
 	}
 
 	err = s.redis.RemoveToken(userID + ":refresh")
 	if err != nil {
-		return err
+		return errors.New(errors.InternalError, "failed to remove refresh token", "خطا در حذف توکن بروزرسانی", nil)
 	}
 
 	return nil
 }
 
 func (s *AuthService) RefreshToken(refreshToken string) (*entities.TokenPair, error) {
-
 	user, err := s.parseAndValidateToken(refreshToken, "refresh")
 	if err != nil {
-		return nil, fmt.Errorf("invalid refresh token: %w", err)
+		return nil, err
 	}
 
 	storedToken, err := s.redis.FindToken(user.ID.String() + ":refresh")
 	if err != nil {
-		return nil, fmt.Errorf("failed to find stored token: %w", err)
+		return nil, errors.New(errors.InternalError, "failed to find stored token", "خطا در یافتن توکن ذخیره شده", nil)
 	}
 
 	if storedToken != refreshToken {
-		return nil, fmt.Errorf("refresh token does not match stored token: %w", err)
+		return nil, errors.New(errors.AuthenticationError, "refresh token does not match stored token", "توکن بروزرسانی با توکن ذخیره شده مطابقت ندارد", nil)
 	}
 
-	s.Logout(user.ID.String())
+	err=s.Logout(user.ID.String())
+	if err != nil{
+		return nil, err
+	}
 
 	tokenPair, err := s.createTokenPair(user)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create new token pair: %w", err)
+		return nil, err
 	}
 
 	return tokenPair, nil
@@ -142,22 +145,22 @@ func (s *AuthService) RefreshToken(refreshToken string) (*entities.TokenPair, er
 func (s *AuthService) createTokenPair(user *entities.User) (*entities.TokenPair, error) {
 	accessToken, err := s.createToken(user, accessTokenExpiration, "access")
 	if err != nil {
-		return nil, fmt.Errorf("failed to create access token: %w", err)
+		return nil, err
 	}
 
 	refreshToken, err := s.createToken(user, refreshTokenExpiration, "refresh")
 	if err != nil {
-		return nil, fmt.Errorf("failed to create refresh token: %w", err)
+		return nil, err
 	}
 
 	err = s.redis.AddToken(user.ID.String()+":access", accessToken, accessTokenExpiration)
 	if err != nil {
-		return &entities.TokenPair{}, fmt.Errorf("failed to store access token in redis: %w", err)
+		return &entities.TokenPair{}, err
 	}
 
 	err = s.redis.AddToken(user.ID.String()+":refresh", refreshToken, refreshTokenExpiration)
 	if err != nil {
-		return &entities.TokenPair{}, fmt.Errorf("failed to store refresh token in redis: %w", err)
+		return &entities.TokenPair{}, err
 	}
 
 	return &entities.TokenPair{
@@ -178,7 +181,7 @@ func (s *AuthService) createToken(user *entities.User, expiration time.Duration,
 
 	config, err := config.LoadConfig()
 	if err != nil {
-		log.Fatalf("Error loading config: %v", err)
+		return "", err
 	}
 
 	jwtSecret := config.JWT.Secret
@@ -186,10 +189,9 @@ func (s *AuthService) createToken(user *entities.User, expiration time.Duration,
 }
 
 func (s *AuthService) parseAndValidateToken(token string, expectedType string) (*entities.User, error) {
-
 	config, err := config.LoadConfig()
 	if err != nil {
-		return nil, fmt.Errorf("error loading config: %w", err)
+		return nil, err
 	}
 
 	jwtSecret := config.JWT.Secret
@@ -198,76 +200,73 @@ func (s *AuthService) parseAndValidateToken(token string, expectedType string) (
 		return []byte(jwtSecret), nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse token: %w", err)
+		return nil, errors.New(errors.AuthenticationError, "failed to parse token", "خطا در تجزیه توکن", err)
 	}
 
 	claims, ok := parsedToken.Claims.(jwt.MapClaims)
 	if !ok {
-		return nil, fmt.Errorf("invalid token claims")
+		return nil, errors.New(errors.AuthenticationError, "invalid token claims", "اطلاعات توکن نامعتبر است", nil)
 	}
 
 	tokenType, ok := claims["token_type"].(string)
 	if !ok || tokenType != expectedType {
-		return nil, fmt.Errorf("invalid token type, expected %s", expectedType)
+		return nil, errors.New(errors.AuthenticationError, fmt.Sprintf("invalid token type, expected %s", expectedType), "نوع توکن نامعتبر است", nil)
 	}
 
 	userIDValue, ok := claims["user_id"]
 	if !ok {
-		return nil, fmt.Errorf("invalid user ID in token")
+		return nil, errors.New(errors.AuthenticationError, "invalid user ID in token", "شناسه کاربر در توکن نامعتبر است", nil)
 	}
 
 	var userID uuid.UUID
 	switch v := userIDValue.(type) {
 	case string:
-		var err error
 		userID, err = uuid.Parse(v)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse user ID: %w", err)
+			return nil, errors.New(errors.AuthenticationError, "failed to parse user ID", "خطا در تجزیه شناسه کاربر", nil)
 		}
 	case map[string]interface{}:
 		if uuidStr, ok := v["String"].(string); ok {
-			var err error
 			userID, err = uuid.Parse(uuidStr)
 			if err != nil {
-				return nil, fmt.Errorf("failed to parse user ID: %w", err)
+				return nil, errors.New(errors.AuthenticationError, "failed to parse user ID", "خطا در تجزیه شناسه کاربر", nil)
 			}
 		} else {
-			return nil, fmt.Errorf("invalid user ID format in token")
+			return nil, errors.New(errors.AuthenticationError, "invalid user ID format in token", "فرمت شناسه کاربر در توکن نامعتبر است", nil)
 		}
 	default:
-		return nil, fmt.Errorf("unexpected user ID format in token")
+		return nil, errors.New(errors.AuthenticationError, "unexpected user ID format in token", "فرمت غیرمنتظره شناسه کاربر در توکن", nil)
 	}
 
 	user, err := s.db.FindUserByID(userID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("user not found")
+			return nil, errors.New(errors.NotFoundError, "user not found", "کاربر یافت نشد", nil)
 		}
-		return nil, fmt.Errorf("failed to find user: %w", err)
+		return nil, errors.New(errors.InternalError, "failed to find user", "خطا در یافتن کاربر", nil)
 	}
 	if user.Status == entities.Deleted {
-		return nil, fmt.Errorf("user not found")
+		return nil, errors.New(errors.NotFoundError, "user not found", "کاربر یافت نشد", nil)
 	}
 	if user.Status == entities.Deactivated {
-		return nil, fmt.Errorf("user is deactivated")
+		return nil, errors.New(errors.AuthenticationError, "user is deactivated", "حساب کاربری غیرفعال است", nil)
 	}
 
 	if user.Status != entities.Active {
-		return nil, fmt.Errorf("user account is not active")
+		return nil, errors.New(errors.AuthenticationError, "user account is not active", "حساب کاربری فعال نیست", nil)
 	}
 
 	return user, nil
 }
 
 func (s *AuthService) ValidateToken(userID, token string) error {
-
 	storedToken, err := s.redis.FindToken(userID + ":access")
 	if err != nil {
-		return fmt.Errorf("failed to find token: %w", err)
+		return err
 	}
 
 	if storedToken != token {
-		return fmt.Errorf("token does not match")
+		return errors.New(errors.AuthenticationError, "token does not match", "توکن مطابقت ندارد", nil)
 	}
 
 	return nil
