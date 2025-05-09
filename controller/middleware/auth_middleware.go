@@ -11,6 +11,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+
 func AuthMiddleware() gin.HandlerFunc {
 	authService := service.NewAuthService()
 
@@ -18,7 +19,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		token := c.GetHeader("Authorization")
 		if token == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": errors.New(errors.AuthenticationError, "Authorization header is required", "هدر احراز هویت الزامی است", nil),
+				"error": errors.ErrMissingAuthHeader,
 			})
 			c.Abort()
 			return
@@ -31,7 +32,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		config, err := config.LoadConfig()
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": errors.New(errors.InternalError, "error loading config", "خطا در بارگذاری تنظیمات", err),
+				"error": errors.ErrLoadConfig,
 			})
 			c.Abort()
 			return
@@ -44,7 +45,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		})
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": errors.New(errors.AuthenticationError, "failed to parse token", "خطا در تجزیه توکن", err),
+				"error": errors.ErrParseToken,
 			})
 			c.Abort()
 			return
@@ -53,7 +54,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		claims, ok := parsedToken.Claims.(jwt.MapClaims)
 		if !ok {
 			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": errors.New(errors.AuthenticationError, "invalid token claims", "اطلاعات توکن نامعتبر است", nil),
+				"error": errors.ErrInvalidTokenClaims,
 			})
 			c.Abort()
 			return
@@ -62,7 +63,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		tokenType := claims["token_type"].(string)
 		if tokenType != "access" {
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": errors.New(errors.AuthenticationError, "invalid token type", "نوع توکن نامعتبر است", nil),
+				"error": errors.ErrInvalidTokenType,
 			})
 			c.Abort()
 			return

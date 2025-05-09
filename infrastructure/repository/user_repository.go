@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/amirdashtii/go_auth/internal/core/entities"
+	"github.com/amirdashtii/go_auth/internal/core/errors"
 	"github.com/amirdashtii/go_auth/internal/core/ports"
 	"github.com/google/uuid"
 )
@@ -41,9 +42,9 @@ func (r *PGUserRepository) FindUserByID(id *uuid.UUID) (*entities.User, error) {
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, err
+			return nil, errors.ErrUserNotFound
 		}
-		return nil, err
+		return nil, errors.ErrGetUser
 	}
 
 	return &user, nil
@@ -87,7 +88,16 @@ func (r *PGUserRepository) Update(user *entities.User) error {
 
 	_, err := r.db.Exec(query, args...)
 	if err != nil {
-		return err
+		if err == sql.ErrNoRows {
+			return errors.ErrUserNotFound
+		}
+		if err.Error() == "duplicate key value violates unique constraint \"users_phone_number_key\"" {
+			return errors.ErrDuplicatePhoneNumber
+		}
+		if err.Error() == "duplicate key value violates unique constraint \"users_email_key\"" {
+			return errors.ErrDuplicateEmail
+		}
+		return errors.ErrUpdateUser
 	}
 	return nil
 }
@@ -96,7 +106,10 @@ func (r *PGUserRepository) Delete(id *uuid.UUID) error {
 	query := `UPDATE users SET deleted_at = NOW(), status = $2 WHERE id = $1`
 	_, err := r.db.Exec(query, id, entities.Deleted)
 	if err != nil {
-		return err
+		if err == sql.ErrNoRows {
+			return errors.ErrUserNotFound
+		}
+		return errors.ErrDeleteUser
 	}
 	return nil
 }

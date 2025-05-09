@@ -37,42 +37,25 @@ func ValidateAuthPassword(fl validator.FieldLevel) bool {
     return hasUpper && hasLower && hasNumber
 }
 
-func getCustomPersianErrorMessage(field string) string {
+func getAuthCustomErrorMessage(field string) error {
     switch field {
     case "PhoneNumber":
-        return "شماره موبایل باید با 09 شروع شده و 11 رقم باشد."
+        return errors.ErrInvalidPhoneNumber
     case "Password":
-        return "رمز عبور باید حداقل ۸ کاراکتر و شامل حروف بزرگ، کوچک و عدد باشد."
+        return errors.ErrInvalidPassword
     case "RefreshToken":
-        return "توکن بروزرسانی نامعتبر است."
+        return errors.ErrInvalidRefreshToken
     default:
-        return fmt.Sprintf("فیلد %s نامعتبر است.", field)
+        return errors.New(errors.ValidationError, fmt.Sprintf("Field %s is invalid.", field), fmt.Sprintf("فیلد %s نامعتبر است.", field), nil)
     }
 }
 
-func getCustomErrorEnglishMessageEn(field string) string {
-    switch field {
-    case "PhoneNumber":
-        return "Phone number must start with 09 and be 11 digits."
-    case "Password":
-        return "Password must be at least 8 characters and include uppercase, lowercase, and a number."
-    case "RefreshToken":
-        return "Refresh token is invalid."
-    default:
-        return fmt.Sprintf("Field %s is invalid.", field)
-    }
-}
 
 func ValidateRegisterRequest(req *dto.RegisterRequest) error {
     if err := authValidate.Struct(req); err != nil {
         if validationErrs, ok := err.(validator.ValidationErrors); ok {
             field := validationErrs[0].Field()
-            return errors.New(
-                errors.ValidationError,
-                getCustomErrorEnglishMessageEn(field),
-                getCustomPersianErrorMessage(field),
-                nil,
-            )
+            return getAuthCustomErrorMessage(field)
         }
         return err
     }
@@ -83,12 +66,7 @@ func ValidateLoginRequest(req *dto.LoginRequest) error {
     if err := authValidate.Struct(req); err != nil {
         if validationErrs, ok := err.(validator.ValidationErrors); ok {
             field := validationErrs[0].Field()
-            return errors.New(
-                errors.ValidationError,
-                getCustomErrorEnglishMessageEn(field),
-                getCustomPersianErrorMessage(field),
-                nil,
-            )
+            return getAuthCustomErrorMessage(field)
         }
         return err
     }
@@ -99,12 +77,7 @@ func ValidateRefreshTokenRequest(req *dto.RefreshTokenRequest) error {
     if err := authValidate.Struct(req); err != nil {
         if validationErrs, ok := err.(validator.ValidationErrors); ok {
             field := validationErrs[0].Field()
-            return errors.New(
-                errors.ValidationError,
-                getCustomErrorEnglishMessageEn(field),
-                getCustomPersianErrorMessage(field),
-                nil,
-            )
+            return getAuthCustomErrorMessage(field)
         }
         return err
     }

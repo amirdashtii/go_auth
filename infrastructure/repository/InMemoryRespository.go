@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/amirdashtii/go_auth/internal/core/errors"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -11,7 +12,7 @@ func (r *RedisRepository) AddToken(userID, token string, expiration time.Duratio
 	ctx := context.Background()
 	err := r.client.Set(ctx, userID, token, expiration).Err()
 	if err != nil {
-		return err
+		return errors.ErrAddToken
 	}
 	return nil
 }
@@ -20,7 +21,7 @@ func (r *RedisRepository) RemoveToken(userID string) error {
 	ctx := context.Background()
 	err := r.client.Del(ctx, userID).Err()
 	if err != nil {
-		return err
+		return errors.ErrRemoveToken
 	}
 	return nil
 }
@@ -30,9 +31,9 @@ func (r *RedisRepository) FindToken(userID string) (string, error) {
 	val, err := r.client.Get(ctx, userID).Result()
 	if err != nil {
 		if err == redis.Nil {
-			return "", err
+			return "", errors.ErrTokenNotFound
 		}
-		return "", err
+		return "", errors.ErrGetToken
 	}
 	return val, nil
 }

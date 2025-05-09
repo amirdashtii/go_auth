@@ -26,9 +26,7 @@ func validateRole(fl validator.FieldLevel) bool {
 		return true
 	}
 
-	// Get role type from entities
 	roleType := entities.ParseRoleType(role)
-	// Check if it's a known role (ParseRoleType returns UserRole for unknown roles)
 	return roleType.String() != "Unknown"
 }
 
@@ -39,9 +37,7 @@ func validateStatus(fl validator.FieldLevel) bool {
 		return true
 	}
 
-	// Get status type from entities
 	statusType := entities.ParseStatusType(status)
-	// Check if it's a known status (ParseStatusType returns Active for unknown statuses)
 	return statusType.String() != "Unknown"
 }
 
@@ -72,49 +68,30 @@ func validateOrder(fl validator.FieldLevel) bool {
 	return validOrders[order]
 }
 
-func getAdminCustomPersianErrorMessage(field string) string {
-	switch field {
-	case "Sort":
-		return "فیلد مرتب\u200cسازی نامعتبر است."
-	case "Role":
-		return "فیلد نقش نامعتبر است."
-	case "Status":
-		return "فیلد وضعیت نامعتبر است."
-	case "Order":
-		return "فیلد ترتیب نامعتبر است."
-	case "PhoneNumber":
-		return "شماره موبایل باید با 09 شروع شده و 11 رقم باشد."
-	case "FirstName":
-		return "فیلد نام کوچک نامعتبر است."
-	case "LastName":
-		return "فیلد نام خانوادگی نامعتبر است."
-	case "Email":
-		return "فیلد ایمیل نامعتبر است."
-	default:
-		return fmt.Sprintf("فیلد %s نامعتبر است.", field)
-	}
-}
 
-func getAdminCustomErrorEnglishMessageEn(field string) string {
+func getAdminCustomErrorMessage(field string) error {
 	switch field {
 	case "Sort":
-		return "Sort field is invalid."
+		return errors.ErrInvalidSortField
 	case "Role":
-		return "Role field is invalid."
+		return errors.ErrInvalidRoleField
 	case "Status":
-		return "Status field is invalid."
+		return errors.ErrInvalidStatusField
 	case "Order":
-		return "Order field is invalid."
+		return errors.ErrInvalidOrderField
 	case "PhoneNumber":
-		return "Phone number must start with 09 and be 11 digits."
+		return errors.ErrInvalidPhoneNumber
 	case "FirstName":
-		return "First name field is invalid."
+		return errors.ErrInvalidFirstName
 	case "LastName":
-		return "Last name field is invalid."
+		return errors.ErrInvalidLastName
 	case "Email":
-		return "Email field is invalid."
+		return errors.ErrInvalidEmail
+	case "Password":
+		return errors.ErrInvalidPassword
+  
 	default:
-		return fmt.Sprintf("%s Field is invalid.", field)
+		return errors.New(errors.ValidationError, fmt.Sprintf("%s Field is invalid.", field), fmt.Sprintf("فیلد %s نامعتبر است.", field), nil)
 	}
 }
 
@@ -122,12 +99,7 @@ func ValidateGetUsersRequest(req *dto.AdminGetUsersRequest) error {
 	if err := adminValidate.Struct(req); err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {
 			field := validationErrs[0].Field()
-			return errors.New(
-				errors.ValidationError,
-				getAdminCustomErrorEnglishMessageEn(field),
-				getAdminCustomPersianErrorMessage(field),
-				nil,
-			)
+			return getAdminCustomErrorMessage(field)
 		}
 		return err
 	}
@@ -138,12 +110,7 @@ func ValidateUpdateUserRequest(req *dto.AdminUserUpdateRequest) error {
 	if err := adminValidate.Struct(req); err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {
 			field := validationErrs[0].Field()
-			return errors.New(
-				errors.ValidationError,
-				getAdminCustomErrorEnglishMessageEn(field),
-				getAdminCustomPersianErrorMessage(field),
-				nil,
-			)
+			return getAdminCustomErrorMessage(field)
 		}
 		return err
 	}
@@ -154,25 +121,15 @@ func ValidateChangeRoleRequest(req *dto.AdminUserUpdateRoleRequest) error {
 	if err := adminValidate.Struct(req); err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {
 			field := validationErrs[0].Field()
-			return errors.New(
-				errors.ValidationError,
-				getAdminCustomErrorEnglishMessageEn(field),
-				getAdminCustomPersianErrorMessage(field),
-				nil,
-			)
+			return getAdminCustomErrorMessage(field)
 		}
 		return err
 	}
 
 	roleType := entities.ParseRoleType(req.Role)
 	if roleType == entities.SuperAdminRole {
-		return errors.New(errors.ValidationError, "cannot change role to super admin", "", nil)
+		return errors.New(errors.ValidationError, "cannot change role to super admin", "نمی‌توان نقش را به نقش مدیر کل به عنوان مدیر کل تغییر داد.", nil)
 	}
-
-	// Additional check to ensure it's a known role type
-	// if !validateRole(req.Role)	 {
-	// 	return errors.New(errors.ValidationError, "invalid role type","",nil)
-	// }
 
 	return nil
 }
@@ -181,20 +138,14 @@ func ValidateChangeStatusRequest(req *dto.AdminUserUpdateStatusRequest) error {
 	if err := adminValidate.Struct(req); err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {
 			field := validationErrs[0].Field()
-			return errors.New(
-				errors.ValidationError,
-				getAdminCustomErrorEnglishMessageEn(field),
-				getAdminCustomPersianErrorMessage(field),
-				nil,
-			)
+			return getAdminCustomErrorMessage(field)
 		}
 		return err
 	}
 
 	statusType := entities.ParseStatusType(req.Status)
-	// Additional check to ensure it's a known status type
 	if statusType.String() == "Unknown" {
-		return errors.New(errors.ValidationError, "invalid status type", "", nil)
+		return errors.New(errors.ValidationError, "invalid status type", "نوع وضعیت نامعتبر است.", nil)
 	}
 
 	return nil

@@ -5,11 +5,14 @@ import "fmt"
 type ErrorType string
 
 const (
-	ValidationError ErrorType = "VALIDATION_ERROR"
+	ValidationError     ErrorType = "VALIDATION_ERROR"
 	AuthenticationError ErrorType = "AUTHENTICATION_ERROR"
-	AuthorizationError ErrorType = "AUTHORIZATION_ERROR"
-	NotFoundError ErrorType = "NOT_FOUND_ERROR"
-	InternalError ErrorType = "INTERNAL_ERROR"
+	AuthorizationError  ErrorType = "AUTHORIZATION_ERROR"
+	NotFoundError       ErrorType = "NOT_FOUND_ERROR"
+	InternalError       ErrorType = "INTERNAL_ERROR"
+	DatabaseError       ErrorType = "DATABASE_ERROR"
+	ConfigError         ErrorType = "CONFIG_ERROR"
+	TokenError          ErrorType = "TOKEN_ERROR"
 )
 
 type ErrorMessage struct {
@@ -83,6 +86,27 @@ func IsNotFoundError(err error) bool {
 func IsInternalError(err error) bool {
 	if customErr, ok := err.(*CustomError); ok {
 		return customErr.Type == InternalError
+	}
+	return false
+}
+
+func IsDatabaseError(err error) bool {
+	if customErr, ok := err.(*CustomError); ok {
+		return customErr.Type == DatabaseError
+	}
+	return false
+}
+
+func IsConfigError(err error) bool {
+	if customErr, ok := err.(*CustomError); ok {
+		return customErr.Type == ConfigError
+	}
+	return false
+}
+
+func IsTokenError(err error) bool {
+	if customErr, ok := err.(*CustomError); ok {
+		return customErr.Type == TokenError
 	}
 	return false
 }

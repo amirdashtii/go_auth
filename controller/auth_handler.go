@@ -39,7 +39,7 @@ func (h *AuthHTTPHandler) RegisterHandler(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": errors.New(errors.ValidationError, "invalid request body", "بدنه درخواست نامعتبر است", err),
+			"error": errors.ErrInvalidRequest,
 		})
 		return
 	}
@@ -68,14 +68,14 @@ func (h *AuthHTTPHandler) LoginHandler(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": errors.New(errors.ValidationError, "invalid request body", "بدنه درخواست نامعتبر است", err),
+			"error": errors.ErrInvalidRequest,
 		})
 		return
 	}
 
 	if err := validators.ValidateLoginRequest(req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": errors.New(errors.ValidationError, "validation error", "خطای اعتبارسنجی", err),
+			"error": err,
 		})
 		return
 	}
@@ -95,7 +95,7 @@ func (h *AuthHTTPHandler) LogoutHandler(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": errors.New(errors.AuthenticationError, "user not authenticated", "کاربر احراز هویت نشده است", nil),
+			"error": errors.ErrUserNotAuthenticated,
 		})
 		return
 	}
@@ -103,7 +103,7 @@ func (h *AuthHTTPHandler) LogoutHandler(c *gin.Context) {
 	userIDStr, ok := userID.(string)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Invalid user ID type",
+			"error": errors.ErrInvalidUserIDType,
 		})
 		return
 	}
@@ -127,14 +127,14 @@ func (h *AuthHTTPHandler) RefreshTokenHandler(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": errors.New(errors.ValidationError, "invalid request body", "بدنه درخواست نامعتبر است", err),
+			"error": errors.ErrInvalidRequest,
 		})
 		return
 	}
 
 	if err := validators.ValidateRefreshTokenRequest(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": errors.New(errors.ValidationError, "validation error", "خطای اعتبارسنجی", err),
+			"error": err,
 		})	 
 		return
 	}

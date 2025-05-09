@@ -43,14 +43,16 @@ func (h *AdminHTTPHandler) GetUsersHandler(c *gin.Context) {
 	role, exists := c.Get("role")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": errors.New(errors.AuthenticationError, "User ID not found", "شناسه کاربر یافت نشد", nil),
+			"error": errors.ErrUserNotAuthenticated,
 		})
 		return
 	}
 
 	roleStr := role.(string)
 	if roleStr != entities.SuperAdminRole.String() && roleStr != entities.AdminRole.String() {
-		c.JSON(http.StatusForbidden, gin.H{"error": errors.New(errors.AuthorizationError, "Forbidden", "دسترسی غیرمجاز", nil)})
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": errors.ErrForbidden,
+		})
 		return
 	}
 
@@ -62,7 +64,9 @@ func (h *AdminHTTPHandler) GetUsersHandler(c *gin.Context) {
 	}
 
 	if err := validators.ValidateGetUsersRequest(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err,
+		})
 		return
 	}
 
@@ -71,7 +75,9 @@ func (h *AdminHTTPHandler) GetUsersHandler(c *gin.Context) {
 
 	resp, err := h.svc.GetUsers(&statuesType, &roleType, &req.Sort, &req.Order)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err,
+		})
 		return
 	}
 
@@ -82,27 +88,33 @@ func (h *AdminHTTPHandler) GetUserByIDHandler(c *gin.Context) {
 	role, exists := c.Get("role")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": errors.New(errors.AuthenticationError, "User ID not found", "شناسه کاربر یافت نشد", nil),
+			"error": errors.ErrUserNotAuthenticated,
 		})
 		return
 	}
 
 	roleStr := role.(string)
 	if roleStr != entities.SuperAdminRole.String() && roleStr != entities.AdminRole.String() {
-		c.JSON(http.StatusForbidden, gin.H{"error": errors.New(errors.AuthorizationError, "Forbidden", "دسترسی غیرمجاز", nil)})
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": errors.ErrForbidden,
+		})
 		return
 	}
 
 	id := c.Param("id")
 	userID, err := uuid.Parse(id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": errors.New(errors.ValidationError, "Invalid user ID", "شناسه کاربر نامعتبر است", nil)})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": errors.ErrInvalidUserID,
+		})
 		return
 	}
 
 	resp, err := h.svc.AdminGetUserByID(&userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err})
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": err,
+		})
 		return
 	}
 
@@ -113,38 +125,48 @@ func (h *AdminHTTPHandler) UpdateUserHandler(c *gin.Context) {
 	role, exists := c.Get("role")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": errors.New(errors.AuthenticationError, "User ID not found", "شناسه کاربر یافت نشد", nil),
+			"error": errors.ErrUserNotAuthenticated,
 		})
 		return
 	}
 
 	roleStr := role.(string)
 	if roleStr != entities.SuperAdminRole.String() && roleStr != entities.AdminRole.String() {
-		c.JSON(http.StatusForbidden, gin.H{"error": errors.New(errors.AuthorizationError, "Forbidden", "دسترسی غیرمجاز", nil)})
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": errors.ErrForbidden,
+		})
 		return
 	}
 
 	id := c.Param("id")
 	userID, err := uuid.Parse(id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": errors.New(errors.ValidationError, "Invalid user ID", "شناسه کاربر نامعتبر است", err)})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": errors.ErrInvalidUserID,
+		})
 		return
 	}
 
 	var updateReq dto.AdminUserUpdateRequest
 	if err := c.ShouldBindJSON(&updateReq); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": errors.New(errors.ValidationError, "Invalid request", "درخواست نامعتبر است", err)})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": errors.ErrInvalidRequest,
+		})
 		return
 	}
 
 	if err := validators.ValidateUpdateUserRequest(&updateReq); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err,
+		})
 		return
 	}
 
 	err = h.svc.AdminUpdateUser(&userID, &updateReq)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err,
+		})
 		return
 	}
 
@@ -155,39 +177,49 @@ func (h *AdminHTTPHandler) ChangeUserRoleHandler(c *gin.Context) {
 	role, exists := c.Get("role")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": errors.New(errors.AuthenticationError, "User ID not found", "شناسه کاربر یافت نشد", nil),
+			"error": errors.ErrUserNotAuthenticated,
 		})
 		return
 	}
 
 	roleStr := role.(string)
 	if roleStr != entities.SuperAdminRole.String() && roleStr != entities.AdminRole.String() {
-		c.JSON(http.StatusForbidden, gin.H{"error": errors.New(errors.AuthorizationError, "Forbidden", "دسترسی غیرمجاز", nil)})
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": errors.ErrForbidden,
+		})
 		return
 	}
 
 	id := c.Param("id")
 	userID, err := uuid.Parse(id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": errors.New(errors.ValidationError, "Invalid user ID", "شناسه کاربر نامعتبر است", err)})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": errors.ErrInvalidUserID,
+		})
 		return
 	}
 
 	var updateRoleReq dto.AdminUserUpdateRoleRequest
 	if err := c.ShouldBindJSON(&updateRoleReq); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": errors.New(errors.ValidationError, "Invalid request", "درخواست نامعتبر است", err)})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": errors.ErrInvalidRequest,
+		})
 		return
 	}
 
 	if err := validators.ValidateChangeRoleRequest(&updateRoleReq); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err,
+		})
 		return
 	}
 
 	updateRole := entities.ParseRoleType(updateRoleReq.Role)
 	err = h.svc.ChangeUserRole(&userID, &updateRole)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err,
+		})
 		return
 	}
 
@@ -198,39 +230,49 @@ func (h *AdminHTTPHandler) ChangeUserStatusHandler(c *gin.Context) {
 	role, exists := c.Get("role")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": errors.New(errors.AuthenticationError, "User ID not found", "شناسه کاربر یافت نشد", nil),
+			"error": errors.ErrUserNotAuthenticated,
 		})
 		return
 	}
 
 	roleStr := role.(string)
 	if roleStr != entities.SuperAdminRole.String() && roleStr != entities.AdminRole.String() {
-		c.JSON(http.StatusForbidden, gin.H{"error": errors.New(errors.AuthorizationError, "Forbidden", "دسترسی غیرمجاز", nil)})
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": errors.ErrForbidden,
+		})
 		return
 	}
 
 	id := c.Param("id")
 	userID, err := uuid.Parse(id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": errors.New(errors.ValidationError, "Invalid user ID", "شناسه کاربر نامعتبر است", err)})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": errors.ErrInvalidUserID,
+		})
 		return
 	}
 
 	var updateStatusReq dto.AdminUserUpdateStatusRequest
 	if err := c.ShouldBindJSON(&updateStatusReq); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": errors.New(errors.ValidationError, "Invalid request", "درخواست نامعتبر است", err)})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": errors.ErrInvalidRequest,
+		})
 		return
 	}
 
 	if err := validators.ValidateChangeStatusRequest(&updateStatusReq); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err,
+		})
 		return
 	}
 
 	updateStatus := entities.ParseStatusType(updateStatusReq.Status)
 	err = h.svc.ChangeUserStatus(&userID, &updateStatus)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err,
+		})
 		return
 	}
 
@@ -241,27 +283,33 @@ func (h *AdminHTTPHandler) DeleteUserHandler(c *gin.Context) {
 	role, exists := c.Get("role")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": errors.New(errors.AuthenticationError, "User ID not found", "شناسه کاربر یافت نشد", nil),
+			"error": errors.ErrUserNotAuthenticated,
 		})
 		return
 	}
 
 	roleStr := role.(string)
 	if roleStr != entities.SuperAdminRole.String() && roleStr != entities.AdminRole.String() {
-		c.JSON(http.StatusForbidden, gin.H{"error": errors.New(errors.AuthorizationError, "Forbidden", "دسترسی غیرمجاز", nil)})
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": errors.ErrForbidden,
+		})
 		return
 	}
 
 	id := c.Param("id")
 	userID, err := uuid.Parse(id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": errors.New(errors.ValidationError, "Invalid user ID", "شناسه کاربر نامعتبر است", err)})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": errors.ErrInvalidUserID,
+		})
 		return
 	}
 
 	err = h.svc.AdminDeleteUser(&userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err,
+		})
 		return
 	}
 

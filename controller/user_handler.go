@@ -40,7 +40,7 @@ func (h *UserHTTPHandler) GetUserProfileHandler(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": errors.New(errors.AuthenticationError, "user not authenticated", "کاربر احراز هویت نشده است", nil),
+			"error": errors.ErrUserNotAuthenticated,
 		})
 		return
 	}
@@ -48,7 +48,7 @@ func (h *UserHTTPHandler) GetUserProfileHandler(c *gin.Context) {
 	userIDUUID, err := uuid.Parse(userID.(string))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": errors.New(errors.ValidationError, "invalid user ID", "شناسه کاربر نامعتبر است", err),
+			"error": errors.ErrInvalidUserID,
 		})
 		return
 	}
@@ -74,7 +74,7 @@ func (h *UserHTTPHandler) UpdateUserProfileHandler(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": errors.New(errors.AuthenticationError, "user not authenticated", "کاربر احراز هویت نشده است", nil),
+			"error": errors.ErrUserNotAuthenticated,
 		})
 		return
 	}
@@ -82,7 +82,7 @@ func (h *UserHTTPHandler) UpdateUserProfileHandler(c *gin.Context) {
 	userIDUUID, err := uuid.Parse(userID.(string))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": errors.New(errors.ValidationError, "invalid user ID", "شناسه کاربر نامعتبر است", err),
+			"error": errors.ErrInvalidUserID,
 		})
 		return
 	}
@@ -90,7 +90,7 @@ func (h *UserHTTPHandler) UpdateUserProfileHandler(c *gin.Context) {
 	var req dto.UserUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": errors.New(errors.ValidationError, "invalid request body", "بدنه درخواست نامعتبر است", err),
+			"error": errors.ErrInvalidRequest,
 		})
 		return
 	}
@@ -119,7 +119,7 @@ func (h *UserHTTPHandler) ChangePasswordHandler(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": errors.New(errors.AuthenticationError, "user not authenticated", "کاربر احراز هویت نشده است", nil),
+			"error": errors.ErrUserNotAuthenticated,
 		})
 		return
 	}
@@ -127,7 +127,7 @@ func (h *UserHTTPHandler) ChangePasswordHandler(c *gin.Context) {
 	userIDUUID, err := uuid.Parse(userID.(string))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": errors.New(errors.ValidationError, "invalid user ID", "شناسه کاربر نامعتبر است", err),
+			"error": errors.ErrInvalidUserID,
 		})
 		return
 	}
@@ -135,7 +135,7 @@ func (h *UserHTTPHandler) ChangePasswordHandler(c *gin.Context) {
 	var req dto.ChangePasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": errors.New(errors.ValidationError, "invalid request body", "بدنه درخواست نامعتبر است", err),
+			"error": errors.ErrInvalidRequest,
 		})
 		return
 	}
@@ -163,7 +163,7 @@ func (h *UserHTTPHandler) DeleteUserProfileHandler(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": errors.New(errors.AuthenticationError, "user not authenticated", "کاربر احراز هویت نشده است", nil),
+			"error": errors.ErrUserNotAuthenticated,
 		})
 		return
 	}
@@ -171,7 +171,7 @@ func (h *UserHTTPHandler) DeleteUserProfileHandler(c *gin.Context) {
 	userIDUUID, err := uuid.Parse(userID.(string))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": errors.New(errors.ValidationError, "invalid user ID", "شناسه کاربر نامعتبر است", err),
+			"error": errors.ErrInvalidUserID,
 		})
 		return
 	}

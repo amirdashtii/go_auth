@@ -53,41 +53,22 @@ func isValidPassword(password string) bool {
 	return hasUpper && hasLower && hasNumber
 }
 
-func getUserCustomPersianErrorMessage(field string) string {
+func getUserCustomErrorMessage(field string) error {
 	switch field {
 	case "PhoneNumber":
-		return "شماره موبایل باید با 09 شروع شده و 11 رقم باشد."
+		return errors.ErrInvalidPhoneNumber
 	case "FirstName":
-		return "فیلد نام کوچک نامعتبر است."
+		return errors.ErrInvalidFirstName
 	case "LastName":
-		return "فیلد نام خانوادگی نامعتبر است."
+		return errors.ErrInvalidLastName
 	case "Email":
-		return "فیلد ایمیل نامعتبر است."
+		return errors.ErrInvalidEmail
 	case "OldPassword":
-		return "پسورد قدیمی باید حداقل 8 کاراکتر و شامل حروف بزرگ، کوچک و یک عدد باشد."
+		return errors.ErrInvalidOldPassword
 	case "NewPassword":
-		return "پسورد جدید باید حداقل 8 کاراکتر و شامل حروف بزرگ، کوچک و یک عدد باشد."
+		return errors.ErrInvalidNewPassword
 	default:
-		return fmt.Sprintf("فیلد %s نامعتبر است.", field)
-	}
-}
-
-func getUserCustomErrorEnglishMessageEn(field string) string {
-	switch field {
-	case "PhoneNumber":
-		return "Phone number must start with 09 and be 11 digits."
-	case "FirstName":
-		return "First name field is invalid."
-	case "LastName":
-		return "Last name field is invalid."
-	case "Email":
-		return "Email field is invalid."
-	case "OldPassword":
-		return "Old password must be at least 8 characters and include uppercase, lowercase, and a number."
-	case "NewPassword":
-		return "New password must be at least 8 characters and include uppercase, lowercase, and a number."
-	default:
-		return fmt.Sprintf("%s Field is invalid.", field)
+		return errors.New(errors.ValidationError, fmt.Sprintf("%s Field is invalid.", field), fmt.Sprintf("فیلد %s نامعتبر است.", field), nil)
 	}
 }
 
@@ -95,12 +76,7 @@ func ValidateUserUpdateRequest(req *dto.UserUpdateRequest) error {
 	if err := userValidate.Struct(req); err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {
 			field := validationErrs[0].Field()
-			return errors.New(
-				errors.ValidationError,
-				getUserCustomErrorEnglishMessageEn(field),
-				getUserCustomPersianErrorMessage(field),
-				nil,
-			)
+			return getUserCustomErrorMessage(field)
 		}
 		return err
 	}
@@ -111,12 +87,7 @@ func ValidateChangePasswordRequest(req *dto.ChangePasswordRequest) error {
 	if err := userValidate.Struct(req); err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {
 			field := validationErrs[0].Field()
-			return errors.New(
-				errors.ValidationError,
-				getUserCustomErrorEnglishMessageEn(field),
-				getUserCustomPersianErrorMessage(field),
-				nil,
-			)
+			return getUserCustomErrorMessage(field)
 		}
 		return err
 	}

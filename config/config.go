@@ -47,7 +47,7 @@ func LoadConfig() (*Config, error) {
 	v.AddConfigPath("./config")
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return nil, errors.New(errors.InternalError, "failed to read YAML config file", "خطا در خواندن فایل YAML", nil)
+			return nil, errors.ErrLoadConfig
 		}
 	}
 
@@ -57,7 +57,7 @@ func LoadConfig() (*Config, error) {
 	v.AddConfigPath("./config")
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return nil, errors.New(errors.InternalError, "failed to read .env file", "خطا در خواندن فایل .env", nil)
+			return nil, errors.ErrLoadConfig
 		}
 	} else {
 		v.AutomaticEnv()
@@ -72,7 +72,7 @@ func LoadConfig() (*Config, error) {
 
 	var config Config
 	if err := v.Unmarshal(&config); err != nil {
-		return nil, errors.New(errors.InternalError, "failed to unmarshal config", "خطا در خواندن کانفیگ", nil)
+		return nil, errors.ErrLoadConfig
 	}
 
 	return &config, nil

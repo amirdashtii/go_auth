@@ -16,7 +16,7 @@ type AdminService struct {
 func NewAdminService() *AdminService {
 	dbRepo, err := repository.NewPGRepository()
 	if err != nil {
-		panic(errors.New(errors.InternalError, "failed to initialize database", "خطا در راه\u200cاندازی پایگاه داده", err))
+		panic(errors.ErrDatabaseInit)
 	}
 	db := dbRepo.DB()
 	adminRepo := repository.NewPGAdminRepository(db)
@@ -28,7 +28,7 @@ func NewAdminService() *AdminService {
 func (s *AdminService) GetUsers(status *entities.StatusType, role *entities.RoleType, sort, order *string) ([]dto.AdminUserResponse, error) {
 	users, err := s.db.FindUsers(status, role, sort, order)
 	if err != nil {
-		return nil, errors.New(errors.InternalError, "failed to get users", "خطا در دریافت لیست کاربران", err)
+		return nil, errors.ErrGetUsers
 	}
 
 	var resp []dto.AdminUserResponse
@@ -50,7 +50,7 @@ func (s *AdminService) GetUsers(status *entities.StatusType, role *entities.Role
 func (s *AdminService) AdminGetUserByID(userID *uuid.UUID) (*dto.AdminUserResponse, error) {
 	user, err := s.db.AdminGetUserByID(userID)
 	if err != nil {
-		return nil, errors.New(errors.InternalError, "failed to get user", "خطا در دریافت اطلاعات کاربر", err)
+		return nil, err
 	}
 	resp := &dto.AdminUserResponse{
 		ID:          user.ID.String(),
@@ -73,28 +73,28 @@ func (s *AdminService) AdminUpdateUser(userID *uuid.UUID, req *dto.AdminUserUpda
 	}
 	user.ID = *userID
 	if err := s.db.AdminUpdateUser(user); err != nil {
-		return errors.New(errors.InternalError, "failed to update user", "خطا در به/u200روزرسانی کاربر", err)
+		return err
 	}
 	return nil
 }
 
 func (s *AdminService) ChangeUserRole(userID *uuid.UUID, role *entities.RoleType) error {
 	if err := s.db.AdminChangeUserRole(userID, role); err != nil {
-		return errors.New(errors.InternalError, "failed to change user role", "خطا در تغییر نقش کاربر", err)
+		return err
 	}
 	return nil
 }
 
 func (s *AdminService) ChangeUserStatus(userID *uuid.UUID, status *entities.StatusType) error {
 	if err := s.db.AdminChangeUserStatus(userID, status); err != nil {
-		return errors.New(errors.InternalError, "failed to change user status", "خطا در تغییر وضعیت کاربر", err)
+		return err
 	}
 	return nil
 }
 
 func (s *AdminService) AdminDeleteUser(userID *uuid.UUID) error {
 	if err := s.db.AdminDeleteUser(userID); err != nil {
-		return errors.New(errors.InternalError, "failed to delete user", "خطا در حذف کاربر", err)
+		return err
 	}
 	return nil
 }

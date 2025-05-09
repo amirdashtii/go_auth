@@ -6,7 +6,7 @@ import (
 )
 
 type AdminRepository interface {
-	FindUsers(status *entities.StatusType, role *entities.RoleType, sort, order *string) ([]*entities.User, error)
+	FindUsers(status *entities.StatusType, role *entities.RoleType, sort, order *string) ([]entities.User, error)
 	AdminGetUserByID(id *uuid.UUID) (*entities.User, error)
 	AdminUpdateUser(user *entities.User) error
 	AdminChangeUserRole(id *uuid.UUID, role *entities.RoleType) error
