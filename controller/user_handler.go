@@ -28,12 +28,12 @@ func NewUserHTTPHandler() *UserHTTPHandler {
 func NewUserRoutes(r *gin.Engine) {
 	h := NewUserHTTPHandler()
 
-	userGroup := r.Group("/profile")
+	userGroup := r.Group("/users")
 	userGroup.Use(middleware.AuthMiddleware())
-	userGroup.GET("/", h.GetUserProfileHandler)
-	userGroup.PUT("/", h.UpdateUserProfileHandler)
-	userGroup.PUT("/change-password", h.ChangePasswordHandler)
-	userGroup.DELETE("/", h.DeleteUserProfileHandler)
+	userGroup.GET("/me", h.GetUserProfileHandler)
+	userGroup.PUT("/me", h.UpdateUserProfileHandler)
+	userGroup.PUT("/me/change-password", h.ChangePasswordHandler)
+	userGroup.DELETE("/me", h.DeleteUserProfileHandler)
 }
 
 func (h *UserHTTPHandler) GetUserProfileHandler(c *gin.Context) {
