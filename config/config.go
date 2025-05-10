@@ -6,6 +6,7 @@ import (
 )
 
 type Config struct {
+	Environment string
 	DB struct {
 		Host     string
 		Port     string
@@ -30,6 +31,7 @@ func LoadConfig() (*Config, error) {
 	v := viper.New()
 
 	// Set default values
+	v.SetDefault("environment", "development")
 	v.SetDefault("server.port", "8080")
 	v.SetDefault("db.port", "5432")
 	v.SetDefault("db.host", "localhost")
@@ -61,6 +63,7 @@ func LoadConfig() (*Config, error) {
 		}
 	} else {
 		v.AutomaticEnv()
+		v.Set("environment", v.GetString("ENVIRONMENT"))
 		v.Set("server.port", v.GetString("SERVER_PORT"))
 		v.Set("db.host", v.GetString("DB_HOST"))
 		v.Set("db.port", v.GetString("DB_PORT"))
