@@ -6,6 +6,7 @@ import (
 	"github.com/amirdashtii/go_auth/controller/dto"
 	"github.com/amirdashtii/go_auth/internal/core/entities"
 	"github.com/amirdashtii/go_auth/internal/core/errors"
+	"github.com/amirdashtii/go_auth/internal/core/ports"
 	"github.com/go-playground/validator/v10"
 )
 
@@ -95,56 +96,90 @@ func getAdminCustomErrorMessage(field string) error {
 	}
 }
 
-func ValidateGetUsersRequest(req *dto.AdminGetUsersRequest) error {
+func ValidateGetUsersRequest(req *dto.AdminGetUsersRequest, logger ports.Logger) error {
 	if err := adminValidate.Struct(req); err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {
 			field := validationErrs[0].Field()
+			logger.Error("Validation error",
+				ports.F("error", err),
+				ports.F("field", field),
+			)
 			return getAdminCustomErrorMessage(field)
 		}
-		return err
+		logger.Error("Validation error",
+			ports.F("error", err),
+		)
+		return errors.ErrInvalidRequest
 	}
 	return nil
 }
 
-func ValidateUpdateUserRequest(req *dto.AdminUserUpdateRequest) error {
+func ValidateUpdateUserRequest(req *dto.AdminUserUpdateRequest, logger ports.Logger) error {
 	if err := adminValidate.Struct(req); err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {
 			field := validationErrs[0].Field()
+			logger.Error("Validation error",
+				ports.F("error", err),
+				ports.F("field", field),
+			)
 			return getAdminCustomErrorMessage(field)
 		}
-		return err
+		logger.Error("Validation error",
+			ports.F("error", err),
+		)
+		return errors.ErrInvalidRequest
 	}
 	return nil
 }
 
-func ValidateChangeRoleRequest(req *dto.AdminUserUpdateRoleRequest) error {
+func ValidateChangeRoleRequest(req *dto.AdminUserUpdateRoleRequest, logger ports.Logger) error {
 	if err := adminValidate.Struct(req); err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {
 			field := validationErrs[0].Field()
+			logger.Error("Validation error",
+				ports.F("error", err),
+				ports.F("field", field),
+			)
 			return getAdminCustomErrorMessage(field)
 		}
-		return err
+		logger.Error("Validation error",
+			ports.F("error", err),
+		)
+		return errors.ErrInvalidRequest
 	}
 
 	roleType := entities.ParseRoleType(req.Role)
 	if roleType == entities.SuperAdminRole {
+		logger.Error("Validation error",
+			ports.F("error", "cannot change role to super admin"),
+		)
 		return errors.New(errors.ValidationError, "cannot change role to super admin", "نمی‌توان نقش را به نقش مدیر کل به عنوان مدیر کل تغییر داد.", nil)
 	}
 
 	return nil
 }
 
-func ValidateChangeStatusRequest(req *dto.AdminUserUpdateStatusRequest) error {
+func ValidateChangeStatusRequest(req *dto.AdminUserUpdateStatusRequest, logger ports.Logger) error {
 	if err := adminValidate.Struct(req); err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {
 			field := validationErrs[0].Field()
+			logger.Error("Validation error",
+				ports.F("error", err),
+				ports.F("field", field),
+			)
 			return getAdminCustomErrorMessage(field)
 		}
-		return err
+		logger.Error("Validation error",
+			ports.F("error", err),
+		)
+		return errors.ErrInvalidRequest
 	}
 
 	statusType := entities.ParseStatusType(req.Status)
 	if statusType.String() == "Unknown" {
+		logger.Error("Validation error",
+			ports.F("error", "invalid status type"),
+		)
 		return errors.New(errors.ValidationError, "invalid status type", "نوع وضعیت نامعتبر است.", nil)
 	}
 

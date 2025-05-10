@@ -2,10 +2,12 @@ package controller
 
 import (
 	"net/http"
+	"os"
 
 	"github.com/amirdashtii/go_auth/controller/dto"
 	"github.com/amirdashtii/go_auth/controller/middleware"
 	"github.com/amirdashtii/go_auth/controller/validators"
+	"github.com/amirdashtii/go_auth/infrastructure/logger"
 	"github.com/amirdashtii/go_auth/internal/core/entities"
 	"github.com/amirdashtii/go_auth/internal/core/errors"
 	"github.com/amirdashtii/go_auth/internal/core/ports"
@@ -16,12 +18,30 @@ import (
 
 type AdminHTTPHandler struct {
 	svc ports.AdminService
+	logger ports.Logger
 }
 
 func NewAdminHTTPHandler() *AdminHTTPHandler {
 	svc := service.NewAdminService()
+
+	// Create log file
+	logFile, err := os.OpenFile("logs/app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		panic(err)
+	}
+
+	// Initialize logger with both file and console output
+	loggerConfig := ports.LoggerConfig{
+		Level:       "info",
+		Environment: "development",
+		ServiceName: "go_auth",
+		Output:      logFile,
+	}
+
+	appLogger := logger.NewZerologLogger(loggerConfig)
 	return &AdminHTTPHandler{
-		svc: svc,
+		svc:    svc,
+		logger: appLogger,
 	}
 }
 
@@ -42,6 +62,9 @@ func NewAdminRoutes(r *gin.Engine) {
 func (h *AdminHTTPHandler) GetUsersHandler(c *gin.Context) {
 	role, exists := c.Get("role")
 	if !exists {
+		h.logger.Error("User not authenticated",
+			ports.F("error", errors.ErrUserNotAuthenticated.Message.English),
+		)
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": errors.ErrUserNotAuthenticated,
 		})
@@ -50,6 +73,10 @@ func (h *AdminHTTPHandler) GetUsersHandler(c *gin.Context) {
 
 	roleStr := role.(string)
 	if roleStr != entities.SuperAdminRole.String() && roleStr != entities.AdminRole.String() {
+		h.logger.Error("User not authorized",
+			ports.F("error", errors.ErrForbidden.Message.English),
+			
+		)
 		c.JSON(http.StatusForbidden, gin.H{
 			"error": errors.ErrForbidden,
 		})
@@ -63,7 +90,7 @@ func (h *AdminHTTPHandler) GetUsersHandler(c *gin.Context) {
 		Order:  c.DefaultQuery("order", "desc"),
 	}
 
-	if err := validators.ValidateGetUsersRequest(&req); err != nil {
+	if err := validators.ValidateGetUsersRequest(&req, h.logger); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err,
 		})
@@ -80,13 +107,16 @@ func (h *AdminHTTPHandler) GetUsersHandler(c *gin.Context) {
 		})
 		return
 	}
-
+ 
 	c.JSON(http.StatusOK, gin.H{"data": dto.AdminUserListResponse{Users: resp}})
 }
 
 func (h *AdminHTTPHandler) GetUserByIDHandler(c *gin.Context) {
 	role, exists := c.Get("role")
 	if !exists {
+		h.logger.Error("User not authenticated",
+			ports.F("error", errors.ErrUserNotAuthenticated.Message.English),
+		)
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": errors.ErrUserNotAuthenticated,
 		})
@@ -95,6 +125,9 @@ func (h *AdminHTTPHandler) GetUserByIDHandler(c *gin.Context) {
 
 	roleStr := role.(string)
 	if roleStr != entities.SuperAdminRole.String() && roleStr != entities.AdminRole.String() {
+		h.logger.Error("User not authorized",
+			ports.F("error", errors.ErrForbidden.Message.English),
+		)
 		c.JSON(http.StatusForbidden, gin.H{
 			"error": errors.ErrForbidden,
 		})
@@ -104,6 +137,10 @@ func (h *AdminHTTPHandler) GetUserByIDHandler(c *gin.Context) {
 	id := c.Param("id")
 	userID, err := uuid.Parse(id)
 	if err != nil {
+		h.logger.Error("Invalid user ID",
+			ports.F("error", errors.ErrInvalidUserID.Message.English),
+			ports.F("user_id", userID),
+		)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": errors.ErrInvalidUserID,
 		})
@@ -124,6 +161,9 @@ func (h *AdminHTTPHandler) GetUserByIDHandler(c *gin.Context) {
 func (h *AdminHTTPHandler) UpdateUserHandler(c *gin.Context) {
 	role, exists := c.Get("role")
 	if !exists {
+		h.logger.Error("User not authenticated",
+			ports.F("error", errors.ErrUserNotAuthenticated.Message.English),
+		)
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": errors.ErrUserNotAuthenticated,
 		})
@@ -132,6 +172,9 @@ func (h *AdminHTTPHandler) UpdateUserHandler(c *gin.Context) {
 
 	roleStr := role.(string)
 	if roleStr != entities.SuperAdminRole.String() && roleStr != entities.AdminRole.String() {
+		h.logger.Error("User not authorized",
+			ports.F("error", errors.ErrForbidden),
+		)
 		c.JSON(http.StatusForbidden, gin.H{
 			"error": errors.ErrForbidden,
 		})
@@ -141,6 +184,10 @@ func (h *AdminHTTPHandler) UpdateUserHandler(c *gin.Context) {
 	id := c.Param("id")
 	userID, err := uuid.Parse(id)
 	if err != nil {
+		h.logger.Error("Invalid user ID",
+			ports.F("error", errors.ErrInvalidUserID.Message.English),
+			ports.F("user_id", userID),
+		)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": errors.ErrInvalidUserID,
 		})
@@ -149,13 +196,17 @@ func (h *AdminHTTPHandler) UpdateUserHandler(c *gin.Context) {
 
 	var updateReq dto.AdminUserUpdateRequest
 	if err := c.ShouldBindJSON(&updateReq); err != nil {
+		h.logger.Error("Invalid request",
+			ports.F("error", errors.ErrInvalidRequest.Message.English),
+			ports.F("request", updateReq),
+		)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": errors.ErrInvalidRequest,
 		})
 		return
 	}
 
-	if err := validators.ValidateUpdateUserRequest(&updateReq); err != nil {
+	if err := validators.ValidateUpdateUserRequest(&updateReq, h.logger); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err,
 		})
@@ -176,6 +227,9 @@ func (h *AdminHTTPHandler) UpdateUserHandler(c *gin.Context) {
 func (h *AdminHTTPHandler) ChangeUserRoleHandler(c *gin.Context) {
 	role, exists := c.Get("role")
 	if !exists {
+		h.logger.Error("User not authenticated",
+			ports.F("error", errors.ErrUserNotAuthenticated.Message.English),
+		)
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": errors.ErrUserNotAuthenticated,
 		})
@@ -184,6 +238,9 @@ func (h *AdminHTTPHandler) ChangeUserRoleHandler(c *gin.Context) {
 
 	roleStr := role.(string)
 	if roleStr != entities.SuperAdminRole.String() && roleStr != entities.AdminRole.String() {
+		h.logger.Error("User not authorized",
+			ports.F("error", errors.ErrForbidden.Message.English),
+		)
 		c.JSON(http.StatusForbidden, gin.H{
 			"error": errors.ErrForbidden,
 		})
@@ -193,6 +250,10 @@ func (h *AdminHTTPHandler) ChangeUserRoleHandler(c *gin.Context) {
 	id := c.Param("id")
 	userID, err := uuid.Parse(id)
 	if err != nil {
+		h.logger.Error("Invalid user ID",
+			ports.F("error", errors.ErrInvalidUserID.Message.English),
+			ports.F("user_id", userID),
+		)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": errors.ErrInvalidUserID,
 		})
@@ -201,13 +262,17 @@ func (h *AdminHTTPHandler) ChangeUserRoleHandler(c *gin.Context) {
 
 	var updateRoleReq dto.AdminUserUpdateRoleRequest
 	if err := c.ShouldBindJSON(&updateRoleReq); err != nil {
+		h.logger.Error("Invalid request",
+			ports.F("error", errors.ErrInvalidRequest.Message.English),
+			ports.F("user_id", userID),
+		)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": errors.ErrInvalidRequest,
 		})
 		return
 	}
 
-	if err := validators.ValidateChangeRoleRequest(&updateRoleReq); err != nil {
+	if err := validators.ValidateChangeRoleRequest(&updateRoleReq, h.logger); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err,
 		})
@@ -229,6 +294,9 @@ func (h *AdminHTTPHandler) ChangeUserRoleHandler(c *gin.Context) {
 func (h *AdminHTTPHandler) ChangeUserStatusHandler(c *gin.Context) {
 	role, exists := c.Get("role")
 	if !exists {
+		h.logger.Error("User not authenticated",
+			ports.F("error", errors.ErrUserNotAuthenticated.Message.English),
+		)
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": errors.ErrUserNotAuthenticated,
 		})
@@ -237,6 +305,9 @@ func (h *AdminHTTPHandler) ChangeUserStatusHandler(c *gin.Context) {
 
 	roleStr := role.(string)
 	if roleStr != entities.SuperAdminRole.String() && roleStr != entities.AdminRole.String() {
+		h.logger.Error("User not authorized",
+			ports.F("error", errors.ErrForbidden.Message.English),
+		)
 		c.JSON(http.StatusForbidden, gin.H{
 			"error": errors.ErrForbidden,
 		})
@@ -246,6 +317,10 @@ func (h *AdminHTTPHandler) ChangeUserStatusHandler(c *gin.Context) {
 	id := c.Param("id")
 	userID, err := uuid.Parse(id)
 	if err != nil {
+		h.logger.Error("Invalid user ID",
+			ports.F("error", errors.ErrInvalidUserID.Message.English),
+			ports.F("user_id", userID),
+		)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": errors.ErrInvalidUserID,
 		})
@@ -254,13 +329,17 @@ func (h *AdminHTTPHandler) ChangeUserStatusHandler(c *gin.Context) {
 
 	var updateStatusReq dto.AdminUserUpdateStatusRequest
 	if err := c.ShouldBindJSON(&updateStatusReq); err != nil {
+		h.logger.Error("Invalid request",
+			ports.F("error", errors.ErrInvalidRequest.Message.English),
+			ports.F("user_id", userID),
+		)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": errors.ErrInvalidRequest,
 		})
 		return
 	}
 
-	if err := validators.ValidateChangeStatusRequest(&updateStatusReq); err != nil {
+	if err := validators.ValidateChangeStatusRequest(&updateStatusReq, h.logger); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err,
 		})
@@ -282,6 +361,9 @@ func (h *AdminHTTPHandler) ChangeUserStatusHandler(c *gin.Context) {
 func (h *AdminHTTPHandler) DeleteUserHandler(c *gin.Context) {
 	role, exists := c.Get("role")
 	if !exists {
+		h.logger.Error("User not authenticated",
+			ports.F("error", errors.ErrUserNotAuthenticated.Message.English),
+		)
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": errors.ErrUserNotAuthenticated,
 		})
@@ -290,6 +372,9 @@ func (h *AdminHTTPHandler) DeleteUserHandler(c *gin.Context) {
 
 	roleStr := role.(string)
 	if roleStr != entities.SuperAdminRole.String() && roleStr != entities.AdminRole.String() {
+		h.logger.Error("User not authorized",
+			ports.F("error", errors.ErrForbidden.Message.English),
+		)
 		c.JSON(http.StatusForbidden, gin.H{
 			"error": errors.ErrForbidden,
 		})
@@ -299,6 +384,10 @@ func (h *AdminHTTPHandler) DeleteUserHandler(c *gin.Context) {
 	id := c.Param("id")
 	userID, err := uuid.Parse(id)
 	if err != nil {
+		h.logger.Error("Invalid user ID",
+			ports.F("error", errors.ErrInvalidUserID.Message.English),
+			ports.F("user_id", userID),
+		)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": errors.ErrInvalidUserID,
 		})

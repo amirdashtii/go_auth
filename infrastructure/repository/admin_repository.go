@@ -12,11 +12,15 @@ import (
 )
 
 type PGAdminRepository struct {
-	db *sql.DB
+	db     *sql.DB
+	logger  ports.Logger
 }
 
-func NewPGAdminRepository(db *sql.DB) ports.AdminRepository {
-	return &PGAdminRepository{db: db}
+func NewPGAdminRepository(db *sql.DB, logger ports.Logger) ports.AdminRepository {
+	return &PGAdminRepository{
+		db:     db,
+		logger:  logger,
+	}
 }
 
 func (r *PGAdminRepository) FindUsers(status *entities.StatusType, role *entities.RoleType, sort, order *string) ([]entities.User, error) {
@@ -78,6 +82,11 @@ func (r *PGAdminRepository) AdminGetUserByID(id *uuid.UUID) (*entities.User, err
 		&user.DeletedAt,
 	)
 	if err != nil {
+		r.logger.Error("Database error in AdminGetUserByID",
+			ports.F("error", err),
+			ports.F("user_id", id),
+
+		)
 		if err == sql.ErrNoRows {
 			return nil, errors.ErrUserNotFound
 		}
@@ -119,6 +128,10 @@ func (r *PGAdminRepository) AdminUpdateUser(user *entities.User) error {
 
 	_, err := r.db.Exec(query, args...)
 	if err != nil {
+		r.logger.Error("Database error in AdminUpdateUser",
+			ports.F("error", err),
+			ports.F("user_id", user.ID),
+		)
 		if err == sql.ErrNoRows {
 			return errors.ErrUserNotFound
 		}
@@ -139,6 +152,10 @@ func (r *PGAdminRepository) AdminChangeUserRole(id *uuid.UUID, role *entities.Ro
 	query := `UPDATE users SET role = $1 WHERE id = $2`
 	_, err := r.db.Exec(query, role, id)
 	if err != nil {
+		r.logger.Error("Database error in AdminChangeUserRole",
+			ports.F("error", err),
+			ports.F("user_id", id),
+		)
 		if err == sql.ErrNoRows {
 			return errors.ErrUserNotFound
 		}
@@ -151,6 +168,10 @@ func (r *PGAdminRepository) AdminChangeUserStatus(id *uuid.UUID, status *entitie
 	query := `UPDATE users SET status = $1 WHERE id = $2`
 	_, err := r.db.Exec(query, status, id)
 	if err != nil {
+		r.logger.Error("Database error in AdminChangeUserStatus",
+			ports.F("error", err),
+			ports.F("user_id", id),
+		)
 		if err == sql.ErrNoRows {
 			return errors.ErrUserNotFound
 		}
@@ -163,6 +184,10 @@ func (r *PGAdminRepository) AdminDeleteUser(id *uuid.UUID) error {
 	query := `UPDATE users SET deleted_at = $1, status = $2 WHERE id = $3`
 	_, err := r.db.Exec(query, time.Now(), entities.Deleted, id)
 	if err != nil {
+		r.logger.Error("Database error in AdminDeleteUser",
+			ports.F("error", err),
+			ports.F("user_id", id),
+		)
 		if err == sql.ErrNoRows {
 			return errors.ErrUserNotFound
 		}

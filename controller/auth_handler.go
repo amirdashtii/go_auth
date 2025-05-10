@@ -2,9 +2,11 @@ package controller
 
 import (
 	"net/http"
+	"os"
 
 	"github.com/amirdashtii/go_auth/controller/dto"
 	"github.com/amirdashtii/go_auth/controller/middleware"
+	"github.com/amirdashtii/go_auth/infrastructure/logger"
 
 	"github.com/amirdashtii/go_auth/controller/validators"
 	"github.com/amirdashtii/go_auth/internal/core/errors"
@@ -15,12 +17,31 @@ import (
 
 type AuthHTTPHandler struct {
 	svc ports.AuthService
+	logger ports.Logger
 }
 
 func NewAuthHTTPHandler() *AuthHTTPHandler {
 	svc := service.NewAuthService()
+
+	// Create log file
+	logFile, err := os.OpenFile("logs/app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		panic(err)
+	}
+
+	// Initialize logger with both file and console output
+	loggerConfig := ports.LoggerConfig{
+		Level:       "info",
+		Environment: "development",
+		ServiceName: "go_auth",
+		Output:      logFile,
+	}
+
+	appLogger := logger.NewZerologLogger(loggerConfig)
+
 	return &AuthHTTPHandler{
-		svc: svc,
+		svc:    svc,
+		logger: appLogger,
 	}
 }
 
@@ -38,13 +59,17 @@ func (h *AuthHTTPHandler) RegisterHandler(c *gin.Context) {
 	var req dto.RegisterRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error("Invalid request",
+			ports.F("error", errors.ErrInvalidRequest.Message.English),
+			ports.F("request", req),
+		)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": errors.ErrInvalidRequest,
 		})
 		return
 	}
 
-	if err := validators.ValidateRegisterRequest(&req); err != nil {
+	if err := validators.ValidateRegisterRequest(&req, h.logger); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err,
 		})
@@ -67,13 +92,17 @@ func (h *AuthHTTPHandler) LoginHandler(c *gin.Context) {
 	var req *dto.LoginRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error("Invalid request",
+			ports.F("error", errors.ErrInvalidRequest.Message.English),
+			ports.F("request", req),
+		)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": errors.ErrInvalidRequest,
 		})
 		return
 	}
 
-	if err := validators.ValidateLoginRequest(req); err != nil {
+	if err := validators.ValidateLoginRequest(req, h.logger); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err,
 		})
@@ -94,6 +123,10 @@ func (h *AuthHTTPHandler) LoginHandler(c *gin.Context) {
 func (h *AuthHTTPHandler) LogoutHandler(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
+		h.logger.Error("User not authenticated",
+			ports.F("error", errors.ErrUserNotAuthenticated.Message.English),
+			ports.F("user_id", userID),
+		)
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": errors.ErrUserNotAuthenticated,
 		})
@@ -102,6 +135,10 @@ func (h *AuthHTTPHandler) LogoutHandler(c *gin.Context) {
 
 	userIDStr, ok := userID.(string)
 	if !ok {
+		h.logger.Error("Invalid user ID type",
+			ports.F("error", errors.ErrInvalidUserIDType.Message.English),
+			ports.F("user_id", userID),
+		)
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": errors.ErrInvalidUserIDType,
 		})
@@ -126,13 +163,17 @@ func (h *AuthHTTPHandler) RefreshTokenHandler(c *gin.Context) {
 	var req dto.RefreshTokenRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error("Invalid request",
+			ports.F("error", errors.ErrInvalidRequest.Message.English),
+			ports.F("request", req),
+		)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": errors.ErrInvalidRequest,
 		})
 		return
 	}
 
-	if err := validators.ValidateRefreshTokenRequest(&req); err != nil {
+	if err := validators.ValidateRefreshTokenRequest(&req, h.logger); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err,
 		})	 

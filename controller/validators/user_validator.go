@@ -6,6 +6,7 @@ import (
 
 	"github.com/amirdashtii/go_auth/controller/dto"
 	"github.com/amirdashtii/go_auth/internal/core/errors"
+	"github.com/amirdashtii/go_auth/internal/core/ports"
 	"github.com/go-playground/validator/v10"
 )
 
@@ -72,27 +73,42 @@ func getUserCustomErrorMessage(field string) error {
 	}
 }
 
-func ValidateUserUpdateRequest(req *dto.UserUpdateRequest) error {
+func ValidateUserUpdateRequest(req *dto.UserUpdateRequest, logger ports.Logger) error {
 	if err := userValidate.Struct(req); err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {
 			field := validationErrs[0].Field()
+			logger.Error("Validation error",
+				ports.F("error", err),
+				ports.F("field", field),
+			)
 			return getUserCustomErrorMessage(field)
 		}
-		return err
+		logger.Error("Validation error",
+			ports.F("error", err),
+		)
 	}
 	return nil
 }
 
-func ValidateChangePasswordRequest(req *dto.ChangePasswordRequest) error {
+func ValidateChangePasswordRequest(req *dto.ChangePasswordRequest, logger ports.Logger) error {
 	if err := userValidate.Struct(req); err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {
 			field := validationErrs[0].Field()
+			logger.Error("Validation error",
+				ports.F("error", err),
+				ports.F("field", field),
+			)
 			return getUserCustomErrorMessage(field)
 		}
-		return err
+		logger.Error("Validation error",
+			ports.F("error", err),
+		)
 	}
 
 	if req.NewPassword == req.OldPassword {
+		logger.Error("Validation error",
+			ports.F("error", "new password must be different from current password"),
+		)
 		return errors.New(errors.ValidationError, "new password must be different from current password", "پسورد جدید باید با پسورد قدیمی فرق داشته باشد.", nil)
 	}
 

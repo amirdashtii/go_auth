@@ -1,12 +1,13 @@
 package validators
 
 import (
-    "fmt"
-    "regexp"
+	"fmt"
+	"regexp"
 
-    "github.com/amirdashtii/go_auth/controller/dto"
-    "github.com/amirdashtii/go_auth/internal/core/errors"
-    "github.com/go-playground/validator/v10"
+	"github.com/amirdashtii/go_auth/controller/dto"
+	"github.com/amirdashtii/go_auth/internal/core/errors"
+	"github.com/amirdashtii/go_auth/internal/core/ports"
+	"github.com/go-playground/validator/v10"
 )
 
 var authValidate *validator.Validate
@@ -51,35 +52,53 @@ func getAuthCustomErrorMessage(field string) error {
 }
 
 
-func ValidateRegisterRequest(req *dto.RegisterRequest) error {
+func ValidateRegisterRequest(req *dto.RegisterRequest, logger ports.Logger) error {
     if err := authValidate.Struct(req); err != nil {
         if validationErrs, ok := err.(validator.ValidationErrors); ok {
             field := validationErrs[0].Field()
+            logger.Error("Validation error",
+				ports.F("error", err),
+				ports.F("field", field),
+			)   
             return getAuthCustomErrorMessage(field)
         }
-        return err
+		logger.Error("Validation error",
+			ports.F("error", err),
+		)
     }
     return nil
 }
 
-func ValidateLoginRequest(req *dto.LoginRequest) error {
+func ValidateLoginRequest(req *dto.LoginRequest, logger ports.Logger) error {
     if err := authValidate.Struct(req); err != nil {
         if validationErrs, ok := err.(validator.ValidationErrors); ok {
             field := validationErrs[0].Field()
+            logger.Error("Validation error",
+				ports.F("error", err),
+				ports.F("field", field),
+			)
             return getAuthCustomErrorMessage(field)
         }
-        return err
+		logger.Error("Validation error",
+			ports.F("error", err),
+		)
     }
     return nil
 }
 
-func ValidateRefreshTokenRequest(req *dto.RefreshTokenRequest) error {
+func ValidateRefreshTokenRequest(req *dto.RefreshTokenRequest, logger ports.Logger) error {
     if err := authValidate.Struct(req); err != nil {
         if validationErrs, ok := err.(validator.ValidationErrors); ok {
             field := validationErrs[0].Field()
-            return getAuthCustomErrorMessage(field)
+            logger.Error("Validation error",
+				ports.F("error", err),
+				ports.F("field", field),
+			)
+                return getAuthCustomErrorMessage(field)
         }
-        return err
+		logger.Error("Validation error",
+			ports.F("error", err),
+		)
     }
     return nil
 }

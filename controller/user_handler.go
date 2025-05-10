@@ -2,10 +2,12 @@ package controller
 
 import (
 	"net/http"
+	"os"
 
 	"github.com/amirdashtii/go_auth/controller/dto"
 	"github.com/amirdashtii/go_auth/controller/middleware"
 	"github.com/amirdashtii/go_auth/controller/validators"
+	"github.com/amirdashtii/go_auth/infrastructure/logger"
 	"github.com/amirdashtii/go_auth/internal/core/errors"
 	"github.com/amirdashtii/go_auth/internal/core/ports"
 	"github.com/amirdashtii/go_auth/internal/core/service"
@@ -16,12 +18,31 @@ import (
 
 type UserHTTPHandler struct {
 	svc ports.UserService
+	logger ports.Logger
 }
 
 func NewUserHTTPHandler() *UserHTTPHandler {
 	svc := service.NewUserService()
+
+	// Create log file
+	logFile, err := os.OpenFile("logs/app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		panic(err)
+	}
+
+	// Initialize logger with both file and console output
+	loggerConfig := ports.LoggerConfig{
+		Level:       "info",
+		Environment: "development",
+		ServiceName: "go_auth",
+		Output:      logFile,	
+	}
+
+	appLogger := logger.NewZerologLogger(loggerConfig)
+
 	return &UserHTTPHandler{
-		svc: svc,
+		svc:    svc,
+		logger: appLogger,
 	}
 }
 
@@ -39,6 +60,9 @@ func NewUserRoutes(r *gin.Engine) {
 func (h *UserHTTPHandler) GetUserProfileHandler(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
+		h.logger.Error("User not authenticated",
+			ports.F("error", errors.ErrUserNotAuthenticated.Message.English),
+		)
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": errors.ErrUserNotAuthenticated,
 		})
@@ -47,7 +71,11 @@ func (h *UserHTTPHandler) GetUserProfileHandler(c *gin.Context) {
 
 	userIDUUID, err := uuid.Parse(userID.(string))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		h.logger.Error("Invalid user ID",
+			ports.F("error", errors.ErrInvalidUserID.Message.English),
+			ports.F("user_id", userID),
+		)
+		c.JSON(http.StatusBadRequest, gin.H{	
 			"error": errors.ErrInvalidUserID,
 		})
 		return
@@ -73,6 +101,9 @@ func (h *UserHTTPHandler) GetUserProfileHandler(c *gin.Context) {
 func (h *UserHTTPHandler) UpdateUserProfileHandler(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
+		h.logger.Error("User not authenticated",
+			ports.F("error", errors.ErrUserNotAuthenticated.Message.English),
+		)
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": errors.ErrUserNotAuthenticated,
 		})
@@ -81,6 +112,10 @@ func (h *UserHTTPHandler) UpdateUserProfileHandler(c *gin.Context) {
 
 	userIDUUID, err := uuid.Parse(userID.(string))
 	if err != nil {
+		h.logger.Error("Invalid user ID",
+			ports.F("error", errors.ErrInvalidUserID.Message.English),
+			ports.F("user_id", userID),
+		)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": errors.ErrInvalidUserID,
 		})
@@ -89,13 +124,17 @@ func (h *UserHTTPHandler) UpdateUserProfileHandler(c *gin.Context) {
 
 	var req dto.UserUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error("Invalid request",
+			ports.F("error", errors.ErrInvalidRequest.Message.English),
+			ports.F("request", req),
+		)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": errors.ErrInvalidRequest,
 		})
 		return
 	}
 
-	err = validators.ValidateUserUpdateRequest(&req)
+	err = validators.ValidateUserUpdateRequest(&req, h.logger)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err,
@@ -118,6 +157,9 @@ func (h *UserHTTPHandler) UpdateUserProfileHandler(c *gin.Context) {
 func (h *UserHTTPHandler) ChangePasswordHandler(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
+		h.logger.Error("User not authenticated",
+			ports.F("error", errors.ErrUserNotAuthenticated.Message.English),
+		)
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": errors.ErrUserNotAuthenticated,
 		})
@@ -126,6 +168,10 @@ func (h *UserHTTPHandler) ChangePasswordHandler(c *gin.Context) {
 
 	userIDUUID, err := uuid.Parse(userID.(string))
 	if err != nil {
+		h.logger.Error("Invalid user ID",
+			ports.F("error", errors.ErrInvalidUserID.Message.English),
+			ports.F("user_id", userID),
+		)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": errors.ErrInvalidUserID,
 		})
@@ -134,12 +180,16 @@ func (h *UserHTTPHandler) ChangePasswordHandler(c *gin.Context) {
 
 	var req dto.ChangePasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error("Invalid request",
+			ports.F("error", errors.ErrInvalidRequest.Message.English),
+			ports.F("request", req),
+		)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": errors.ErrInvalidRequest,
 		})
 		return
 	}
-	err = validators.ValidateChangePasswordRequest(&req)
+	err = validators.ValidateChangePasswordRequest(&req, h.logger)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err,
@@ -162,6 +212,9 @@ func (h *UserHTTPHandler) ChangePasswordHandler(c *gin.Context) {
 func (h *UserHTTPHandler) DeleteUserProfileHandler(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
+		h.logger.Error("User not authenticated",
+			ports.F("error", errors.ErrUserNotAuthenticated.Message.English),
+		)
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": errors.ErrUserNotAuthenticated,
 		})
@@ -170,6 +223,10 @@ func (h *UserHTTPHandler) DeleteUserProfileHandler(c *gin.Context) {
 
 	userIDUUID, err := uuid.Parse(userID.(string))
 	if err != nil {
+		h.logger.Error("Invalid user ID",
+			ports.F("error", errors.ErrInvalidUserID.Message.English),
+			ports.F("user_id", userID),
+		)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": errors.ErrInvalidUserID,
 		})

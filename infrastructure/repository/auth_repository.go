@@ -9,17 +9,16 @@ import (
 	"github.com/google/uuid"
 )
 
-var (
-	ErrDuplicatePhoneNumber = errors.New(errors.ValidationError, "Phone number already exists", "این شماره تلفن قبلاً ثبت شده است", nil)
-	ErrUserNotFound         = errors.New(errors.NotFoundError, "Invalid credentials", "نام کاربری یا رمز عبور اشتباه است", nil)
-)
-
 type PGAuthRepository struct {
-	db *sql.DB
+	db     *sql.DB
+	logger ports.Logger
 }
 
-func NewPGAuthRepository(db *sql.DB) ports.AuthRepository {
-	return &PGAuthRepository{db: db}
+func NewPGAuthRepository(db *sql.DB, logger ports.Logger) ports.AuthRepository {
+	return &PGAuthRepository{
+		db:     db,
+		logger: logger,
+	}
 }
 
 func (r *PGAuthRepository) Create(user *entities.User) error {
@@ -42,6 +41,11 @@ func (r *PGAuthRepository) Create(user *entities.User) error {
 	)
 
 	if err != nil {
+		r.logger.Error("Database error in Create",
+			ports.F("error", err),
+			ports.F("phone_number", user.PhoneNumber),
+		)
+
 		if err.Error() == "duplicate key value violates unique constraint \"users_phone_number_key\"" {
 			return errors.ErrDuplicatePhoneNumber
 		}
@@ -74,6 +78,11 @@ func (r *PGAuthRepository) FindUserByPhoneNumber(phoneNumber *string) (*entities
 	)
 
 	if err != nil {
+		r.logger.Error("Database error in FindUserByPhoneNumber",
+			ports.F("error", err),
+			ports.F("phone_number", phoneNumber),
+		)
+
 		if err == sql.ErrNoRows {
 			return nil, errors.ErrUserNotFound
 		}
@@ -106,10 +115,15 @@ func (r *PGAuthRepository) FindUserByID(id uuid.UUID) (*entities.User, error) {
 	)
 
 	if err != nil {
+		r.logger.Error("Database error in FindUserByID",
+			ports.F("error", err),
+			ports.F("user_id", id),
+		)
+
 		if err == sql.ErrNoRows {
-			return nil, ErrUserNotFound
+			return nil, errors.ErrUserNotFound
 		}
-		return nil, err
+		return nil, errors.ErrGetUser
 	}
 
 	return &user, nil

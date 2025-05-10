@@ -11,11 +11,15 @@ import (
 )
 
 type PGUserRepository struct {
-	db *sql.DB
+	db     *sql.DB
+	logger ports.Logger
 }
 
-func NewPGUserRepository(db *sql.DB) ports.UserRepository {
-	return &PGUserRepository{db: db}
+func NewPGUserRepository(db *sql.DB, logger ports.Logger) ports.UserRepository {
+	return &PGUserRepository{
+		db:     db,
+		logger: logger,
+	}
 }
 
 func (r *PGUserRepository) FindUserByID(id *uuid.UUID) (*entities.User, error) {
@@ -41,6 +45,10 @@ func (r *PGUserRepository) FindUserByID(id *uuid.UUID) (*entities.User, error) {
 	)
 
 	if err != nil {
+		r.logger.Error("Database error in FindUserByID",
+			ports.F("error", err),
+			ports.F("id", id),
+		)
 		if err == sql.ErrNoRows {
 			return nil, errors.ErrUserNotFound
 		}
@@ -88,6 +96,10 @@ func (r *PGUserRepository) Update(user *entities.User) error {
 
 	_, err := r.db.Exec(query, args...)
 	if err != nil {
+		r.logger.Error("Database error in Update",
+			ports.F("error", err),
+			ports.F("user", user),
+		)
 		if err == sql.ErrNoRows {
 			return errors.ErrUserNotFound
 		}
@@ -106,6 +118,10 @@ func (r *PGUserRepository) Delete(id *uuid.UUID) error {
 	query := `UPDATE users SET deleted_at = NOW(), status = $2 WHERE id = $1`
 	_, err := r.db.Exec(query, id, entities.Deleted)
 	if err != nil {
+		r.logger.Error("Database error in Delete",
+			ports.F("error", err),
+			ports.F("id", id),
+		)	
 		if err == sql.ErrNoRows {
 			return errors.ErrUserNotFound
 		}

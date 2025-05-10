@@ -1,7 +1,10 @@
 package service
 
 import (
+	"os"
+
 	"github.com/amirdashtii/go_auth/controller/dto"
+	"github.com/amirdashtii/go_auth/infrastructure/logger"
 	"github.com/amirdashtii/go_auth/infrastructure/repository"
 	"github.com/amirdashtii/go_auth/internal/core/entities"
 	"github.com/amirdashtii/go_auth/internal/core/errors"
@@ -11,6 +14,7 @@ import (
 
 type AdminService struct {
 	db ports.AdminRepository
+	logger ports.Logger
 }
 
 func NewAdminService() *AdminService {
@@ -19,15 +23,35 @@ func NewAdminService() *AdminService {
 		panic(errors.ErrDatabaseInit)
 	}
 	db := dbRepo.DB()
-	adminRepo := repository.NewPGAdminRepository(db)
+
+	// Create log file
+	logfile, err := os.OpenFile("logs/app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		panic(err)
+	}	
+
+	// Initialize logger with both file and console output
+	loggerConfig := ports.LoggerConfig{
+		Level: "info",
+		Environment: "development",
+		ServiceName: "go_auth",
+		Output: logfile,
+	}
+	appLogger := logger.NewZerologLogger(loggerConfig)
+	
+	adminRepo := repository.NewPGAdminRepository(db, appLogger)
 	return &AdminService{
 		db: adminRepo,
+		logger: appLogger,
 	}
 }
 
 func (s *AdminService) GetUsers(status *entities.StatusType, role *entities.RoleType, sort, order *string) ([]dto.AdminUserResponse, error) {
 	users, err := s.db.FindUsers(status, role, sort, order)
 	if err != nil {
+		s.logger.Error("Error getting users",
+			ports.F("error", err),
+		)
 		return nil, errors.ErrGetUsers
 	}
 

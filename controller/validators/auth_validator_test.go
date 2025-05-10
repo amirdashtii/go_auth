@@ -1,12 +1,27 @@
 package validators
 
 import (
+	"context"
+	"os"
 	"testing"
 
 	"github.com/amirdashtii/go_auth/controller/dto"
+	"github.com/amirdashtii/go_auth/internal/core/ports"
 	"github.com/go-playground/validator/v10"
 	"github.com/stretchr/testify/assert"
 )
+
+type mockLogger struct{}
+
+func (m *mockLogger) Info(msg string, fields ...ports.Field)  {}
+func (m *mockLogger) Error(msg string, fields ...ports.Field) {}
+func (m *mockLogger) Debug(msg string, fields ...ports.Field) {}
+func (m *mockLogger) Warn(msg string, fields ...ports.Field)  {}
+func (m *mockLogger) Fatal(msg string, fields ...ports.Field) { os.Exit(1) }
+func (m *mockLogger) With(fields ...ports.Field) ports.Logger { return m }
+func (m *mockLogger) WithContext(ctx context.Context) ports.Logger { return m }
+
+var testLogger = &mockLogger{}
 
 func TestValidatePhoneNumber(t *testing.T) {
 	tests := []struct {
@@ -138,7 +153,7 @@ func TestValidateRegisterRequest(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ValidateRegisterRequest(tt.request)
+			err := ValidateRegisterRequest(tt.request, testLogger)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
@@ -182,7 +197,7 @@ func TestValidateLoginRequest(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ValidateLoginRequest(tt.request)
+			err := ValidateLoginRequest(tt.request, testLogger)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
@@ -216,7 +231,7 @@ func TestValidateRefreshTokenRequest(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ValidateRefreshTokenRequest(tt.request)
+			err := ValidateRefreshTokenRequest(tt.request, testLogger)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {

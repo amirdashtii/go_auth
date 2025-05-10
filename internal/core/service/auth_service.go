@@ -3,10 +3,12 @@ package service
 import (
 	// "database/sql"
 
+	"os"
 	"time"
 
 	"github.com/amirdashtii/go_auth/config"
 	"github.com/amirdashtii/go_auth/controller/dto"
+	"github.com/amirdashtii/go_auth/infrastructure/logger"
 	"github.com/amirdashtii/go_auth/infrastructure/repository"
 	"github.com/amirdashtii/go_auth/internal/core/entities"
 	"github.com/amirdashtii/go_auth/internal/core/errors"
@@ -24,6 +26,7 @@ const (
 type AuthService struct {
 	db    ports.AuthRepository
 	redis ports.InMemoryRespositoryContracts
+	logger ports.Logger
 }
 
 func NewAuthService() *AuthService {
@@ -32,8 +35,24 @@ func NewAuthService() *AuthService {
 		panic(errors.ErrDatabaseInit)
 	}
 	db := dbRepo.DB()
-	authRepo := repository.NewPGAuthRepository(db)
-	redisRepo, err := repository.NewRedisRepository()
+
+	// Create log file
+	logFile, err := os.OpenFile("logs/app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		panic(err)
+	}
+
+	// Initialize logger with both file and console output
+	loggerConfig := ports.LoggerConfig{
+		Level:       "info",
+		Environment: "development",
+		ServiceName: "go_auth",
+		Output:      logFile,
+	}
+	appLogger := logger.NewZerologLogger(loggerConfig)
+
+	authRepo := repository.NewPGAuthRepository(db, appLogger)
+	redisRepo, err := repository.NewRedisRepository(appLogger)
 	if err != nil {
 		panic(errors.ErrRedisInit)
 	}
@@ -41,12 +60,17 @@ func NewAuthService() *AuthService {
 	return &AuthService{
 		db:    authRepo,
 		redis: redisRepo,
+		logger: appLogger,
 	}
 }
 
 func (s *AuthService) Register(req *dto.RegisterRequest) error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
+		s.logger.Error("Error generating password hash",
+			ports.F("error", err),
+			ports.F("phone_number", req.PhoneNumber),
+		)	
 		return errors.ErrCreateUser
 	}
 
@@ -73,13 +97,22 @@ func (s *AuthService) Login(loginReq *dto.LoginRequest) (*entities.TokenPair, er
 		return nil, err
 	}
 	if user.Status == entities.Deleted {
+		s.logger.Error("User is deleted",
+			ports.F("user_id", user.ID),
+		)
 		return nil, errors.ErrInvalidCredentials
 	}
 	if user.Status == entities.Deactivated {
+		s.logger.Error("User is deactivated",
+			ports.F("user_id", user.ID),
+		)
 		return nil, errors.ErrAccountDeactivated
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginReq.Password)); err != nil {
+		s.logger.Error("Password is incorrect",
+			ports.F("user_id", user.ID),
+		)
 		return nil, errors.ErrLogin
 	}
 
@@ -117,6 +150,9 @@ func (s *AuthService) RefreshToken(refreshToken string) (*entities.TokenPair, er
 	}
 
 	if storedToken != refreshToken {
+		s.logger.Error("Invalid refresh token",
+			ports.F("user_id", user.ID),
+		)
 		return nil, errors.ErrInvalidToken
 	}
 
@@ -178,6 +214,10 @@ func (s *AuthService) createToken(user *entities.User, expiration time.Duration,
 	jwtSecret := config.JWT.Secret
 	tokenString, err := token.SignedString([]byte(jwtSecret))
 	if err != nil {
+		s.logger.Error("Error creating token",
+			ports.F("error", err),
+			ports.F("user_id", user.ID),
+		)
 		return "", errors.ErrTokenCreation
 	}
 
@@ -196,21 +236,34 @@ func (s *AuthService) parseAndValidateToken(token string, expectedType string) (
 		return []byte(jwtSecret), nil
 	})
 	if err != nil {
+		s.logger.Error("Error parsing token",
+			ports.F("error", err),
+			ports.F("token", token),
+		)
 		return nil, errors.ErrInvalidToken
 	}
 
 	claims, ok := parsedToken.Claims.(jwt.MapClaims)
 	if !ok {
+		s.logger.Error("Invalid token claims",
+			ports.F("token", token),
+		)
 		return nil, errors.ErrInvalidToken
 	}
 
 	tokenType, ok := claims["token_type"].(string)
 	if !ok || tokenType != expectedType {
+		s.logger.Error("Invalid token type",
+			ports.F("token", token),
+		)
 		return nil, errors.ErrInvalidToken
 	}
 
 	userIDValue, ok := claims["user_id"]
 	if !ok {
+		s.logger.Error("Invalid token claims",
+			ports.F("token", token),
+		)
 		return nil, errors.ErrInvalidToken
 	}
 
@@ -219,18 +272,32 @@ func (s *AuthService) parseAndValidateToken(token string, expectedType string) (
 	case string:
 		userID, err = uuid.Parse(v)
 		if err != nil {
+			s.logger.Error("Invalid user ID",
+				ports.F("error", err),
+				ports.F("token", token),
+			)
 			return nil, errors.ErrInvalidToken
 		}
 	case map[string]interface{}:
 		if uuidStr, ok := v["String"].(string); ok {
 			userID, err = uuid.Parse(uuidStr)
 			if err != nil {
+				s.logger.Error("Invalid user ID",
+					ports.F("error", err),
+					ports.F("token", token),
+				)
 				return nil, errors.ErrInvalidToken
 			}
 		} else {
+			s.logger.Error("Invalid user ID",
+				ports.F("token", token),
+			)
 			return nil, errors.ErrInvalidToken
 		}
 	default:
+		s.logger.Error("Invalid user ID",
+			ports.F("token", token),
+		)
 		return nil, errors.ErrInvalidToken
 	}
 
@@ -239,9 +306,15 @@ func (s *AuthService) parseAndValidateToken(token string, expectedType string) (
 		return nil, err
 	}
 	if user.Status == entities.Deleted {
+		s.logger.Error("User is deleted",
+			ports.F("user_id", userID),
+		)
 		return nil, errors.ErrInvalidCredentials
 	}
 	if user.Status == entities.Deactivated {
+		s.logger.Error("User is deactivated",
+			ports.F("user_id", userID),
+		)
 		return nil, errors.ErrAccountDeactivated
 	}
 
@@ -255,6 +328,9 @@ func (s *AuthService) ValidateToken(userID, token string) error {
 	}
 
 	if storedToken != token {
+		s.logger.Error("Invalid access token",
+			ports.F("user_id", userID),
+		)
 		return errors.ErrInvalidToken
 	}
 
