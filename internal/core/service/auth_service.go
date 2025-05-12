@@ -1,8 +1,7 @@
 package service
 
 import (
-	// "database/sql"
-
+	"context"
 	"os"
 	"time"
 
@@ -24,8 +23,8 @@ const (
 )
 
 type AuthService struct {
-	db    ports.AuthRepository
-	redis ports.InMemoryRespositoryContracts
+	db     ports.AuthRepository
+	redis  ports.InMemoryRespositoryContracts
 	logger ports.Logger
 }
 
@@ -58,19 +57,18 @@ func NewAuthService() *AuthService {
 	}
 
 	return &AuthService{
-		db:    authRepo,
-		redis: redisRepo,
+		db:     authRepo,
+		redis:  redisRepo,
 		logger: appLogger,
 	}
 }
 
-func (s *AuthService) Register(req *dto.RegisterRequest) error {
+func (s *AuthService) Register(ctx context.Context, req *dto.RegisterRequest) error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		s.logger.Error("Error generating password hash",
+		s.logger.Error("Error hashing password",
 			ports.F("error", err),
-			ports.F("phone_number", req.PhoneNumber),
-		)	
+		)
 		return errors.ErrCreateUser
 	}
 
@@ -84,18 +82,30 @@ func (s *AuthService) Register(req *dto.RegisterRequest) error {
 		UpdatedAt:   time.Now(),
 	}
 
-	if err := s.db.Create(&user); err != nil {
-		return err
+	if err := s.db.Create(ctx, &user); err != nil {
+		return errors.ErrCreateUser
 	}
 
 	return nil
 }
 
-func (s *AuthService) Login(loginReq *dto.LoginRequest) (*entities.TokenPair, error) {
-	user, err := s.db.FindUserByPhoneNumber(&loginReq.PhoneNumber)
+func (s *AuthService) Login(ctx context.Context, loginReq *dto.LoginRequest) (*entities.TokenPair, error) {
+	// Find user
+	user, err := s.db.FindUserByPhoneNumber(ctx, &loginReq.PhoneNumber)
 	if err != nil {
 		return nil, err
 	}
+
+	// Check password
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginReq.Password)); err != nil {
+		s.logger.Error("Invalid password",
+			ports.F("error", err),
+			ports.F("user_id", user.ID),
+		)
+		return nil, errors.ErrInvalidCredentials
+	}
+
+	// Check user status
 	if user.Status == entities.Deleted {
 		s.logger.Error("User is deleted",
 			ports.F("user_id", user.ID),
@@ -109,28 +119,17 @@ func (s *AuthService) Login(loginReq *dto.LoginRequest) (*entities.TokenPair, er
 		return nil, errors.ErrAccountDeactivated
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginReq.Password)); err != nil {
-		s.logger.Error("Password is incorrect",
-			ports.F("user_id", user.ID),
-		)
-		return nil, errors.ErrLogin
-	}
-
-	tokenPair, err := s.createTokenPair(user)
+	// Generate tokens
+	tokens, err := s.createTokenPair(ctx, user)
 	if err != nil {
 		return nil, err
 	}
 
-	return tokenPair, nil
+	return tokens, nil
 }
 
-func (s *AuthService) Logout(userID string) error {
-	err := s.redis.RemoveToken(userID + ":access")
-	if err != nil {
-		return err
-	}
-
-	err = s.redis.RemoveToken(userID + ":refresh")
+func (s *AuthService) Logout(ctx context.Context, userID string) error {
+	err := s.redis.RemoveToken(ctx, userID+":access")
 	if err != nil {
 		return err
 	}
@@ -138,13 +137,13 @@ func (s *AuthService) Logout(userID string) error {
 	return nil
 }
 
-func (s *AuthService) RefreshToken(refreshToken string) (*entities.TokenPair, error) {
-	user, err := s.parseAndValidateToken(refreshToken, "refresh")
+func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*entities.TokenPair, error) {
+	user, err := s.parseAndValidateToken(ctx, refreshToken, "refresh")
 	if err != nil {
 		return nil, err
 	}
 
-	storedToken, err := s.redis.FindToken(user.ID.String() + ":refresh")
+	storedToken, err := s.redis.FindToken(ctx, user.ID.String()+":refresh")
 	if err != nil {
 		return nil, err
 	}
@@ -156,12 +155,12 @@ func (s *AuthService) RefreshToken(refreshToken string) (*entities.TokenPair, er
 		return nil, errors.ErrInvalidToken
 	}
 
-	err = s.Logout(user.ID.String())
+	err = s.Logout(ctx, user.ID.String())
 	if err != nil {
 		return nil, err
 	}
 
-	tokenPair, err := s.createTokenPair(user)
+	tokenPair, err := s.createTokenPair(ctx, user)
 	if err != nil {
 		return nil, err
 	}
@@ -169,23 +168,23 @@ func (s *AuthService) RefreshToken(refreshToken string) (*entities.TokenPair, er
 	return tokenPair, nil
 }
 
-func (s *AuthService) createTokenPair(user *entities.User) (*entities.TokenPair, error) {
-	accessToken, err := s.createToken(user, accessTokenExpiration, "access")
+func (s *AuthService) createTokenPair(ctx context.Context, user *entities.User) (*entities.TokenPair, error) {
+	accessToken, err := s.createToken(ctx, user, accessTokenExpiration, "access")
 	if err != nil {
 		return nil, err
 	}
 
-	refreshToken, err := s.createToken(user, refreshTokenExpiration, "refresh")
+	refreshToken, err := s.createToken(ctx, user, refreshTokenExpiration, "refresh")
 	if err != nil {
 		return nil, err
 	}
 
-	err = s.redis.AddToken(user.ID.String()+":access", accessToken, accessTokenExpiration)
+	err = s.redis.AddToken(ctx, user.ID.String()+":access", accessToken, accessTokenExpiration)
 	if err != nil {
 		return nil, err
 	}
 
-	err = s.redis.AddToken(user.ID.String()+":refresh", refreshToken, refreshTokenExpiration)
+	err = s.redis.AddToken(ctx, user.ID.String()+":refresh", refreshToken, refreshTokenExpiration)
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +195,7 @@ func (s *AuthService) createTokenPair(user *entities.User) (*entities.TokenPair,
 	}, nil
 }
 
-func (s *AuthService) createToken(user *entities.User, expiration time.Duration, tokenType string) (string, error) {
+func (s *AuthService) createToken(ctx context.Context, user *entities.User, expiration time.Duration, tokenType string) (string, error) {
 	claims := jwt.MapClaims{
 		"user_id":    user.ID,
 		"role":       user.Role,
@@ -224,7 +223,7 @@ func (s *AuthService) createToken(user *entities.User, expiration time.Duration,
 	return tokenString, nil
 }
 
-func (s *AuthService) parseAndValidateToken(token string, expectedType string) (*entities.User, error) {
+func (s *AuthService) parseAndValidateToken(ctx context.Context, token string, expectedType string) (*entities.User, error) {
 	config, err := config.LoadConfig()
 	if err != nil {
 		return nil, err
@@ -301,7 +300,7 @@ func (s *AuthService) parseAndValidateToken(token string, expectedType string) (
 		return nil, errors.ErrInvalidToken
 	}
 
-	user, err := s.db.FindUserByID(userID)
+	user, err := s.db.FindUserByID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -320,9 +319,8 @@ func (s *AuthService) parseAndValidateToken(token string, expectedType string) (
 
 	return user, nil
 }
-
-func (s *AuthService) ValidateToken(userID, token string) error {
-	storedToken, err := s.redis.FindToken(userID + ":access")
+func (s *AuthService) ValidateToken(ctx context.Context, userID, token string) error {
+	storedToken, err := s.redis.FindToken(ctx, userID+":access")
 	if err != nil {
 		return err
 	}

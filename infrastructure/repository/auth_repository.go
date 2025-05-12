@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/amirdashtii/go_auth/internal/core/entities"
@@ -21,7 +22,7 @@ func NewPGAuthRepository(db *sql.DB, logger ports.Logger) ports.AuthRepository {
 	}
 }
 
-func (r *PGAuthRepository) Create(user *entities.User) error {
+func (r *PGAuthRepository) Create(ctx context.Context, user *entities.User) error {
 	query := `
 		INSERT INTO users (id, phone_number, password, first_name, last_name, email, status, role, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -55,7 +56,7 @@ func (r *PGAuthRepository) Create(user *entities.User) error {
 	return nil
 }
 
-func (r *PGAuthRepository) FindUserByPhoneNumber(phoneNumber *string) (*entities.User, error) {
+func (r *PGAuthRepository) FindUserByPhoneNumber(ctx context.Context, phoneNumber *string) (*entities.User, error) {
 	query := `
 	SELECT id, phone_number, password, first_name, last_name, email, status, role, created_at, updated_at, deleted_at
 	FROM users
@@ -92,7 +93,7 @@ func (r *PGAuthRepository) FindUserByPhoneNumber(phoneNumber *string) (*entities
 	return &user, nil
 }
 
-func (r *PGAuthRepository) FindUserByID(id uuid.UUID) (*entities.User, error) {
+func (r *PGAuthRepository) FindUserByID(ctx context.Context, id uuid.UUID) (*entities.User, error) {
 	query := `
 	SELECT id, phone_number, password, first_name, last_name, email, status, role, created_at, updated_at, deleted_at
 	FROM users

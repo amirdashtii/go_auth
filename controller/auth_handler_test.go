@@ -2,6 +2,7 @@ package controller
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -19,12 +20,12 @@ type MockAuthService struct {
 	mock.Mock
 }
 
-func (m *MockAuthService) Register(req *dto.RegisterRequest) error {
+func (m *MockAuthService) Register(ctx context.Context, req *dto.RegisterRequest) error {
 	args := m.Called(req)
 	return args.Error(0)
 }
 
-func (m *MockAuthService) Login(req *dto.LoginRequest) (*entities.TokenPair, error) {
+func (m *MockAuthService) Login(ctx context.Context, req *dto.LoginRequest) (*entities.TokenPair, error) {
 	args := m.Called(req)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -32,12 +33,12 @@ func (m *MockAuthService) Login(req *dto.LoginRequest) (*entities.TokenPair, err
 	return args.Get(0).(*entities.TokenPair), args.Error(1)
 }
 
-func (m *MockAuthService) Logout(userID string) error {
+func (m *MockAuthService) Logout(ctx context.Context, userID string) error {
 	args := m.Called(userID)
 	return args.Error(0)
 }
 
-func (m *MockAuthService) RefreshToken(refreshToken string) (*entities.TokenPair, error) {
+func (m *MockAuthService) RefreshToken(ctx context.Context, refreshToken string) (*entities.TokenPair, error) {
 	args := m.Called(refreshToken)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -45,7 +46,7 @@ func (m *MockAuthService) RefreshToken(refreshToken string) (*entities.TokenPair
 	return args.Get(0).(*entities.TokenPair), args.Error(1)
 }
 
-func (m *MockAuthService) ValidateToken(token string, userID string) error {
+func (m *MockAuthService) ValidateToken(ctx context.Context, token string, userID string) error {
 	args := m.Called(token, userID)
 	return args.Error(0)
 }
@@ -379,4 +380,4 @@ func TestRefreshTokenHandler(t *testing.T) {
 			require.Equal(t, tt.expectedBody, response)
 		})
 	}
-} 
+}

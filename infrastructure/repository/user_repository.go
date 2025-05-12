@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -22,7 +23,7 @@ func NewPGUserRepository(db *sql.DB, logger ports.Logger) ports.UserRepository {
 	}
 }
 
-func (r *PGUserRepository) FindUserByID(id *uuid.UUID) (*entities.User, error) {
+func (r *PGUserRepository) FindUserByID(ctx context.Context, id *uuid.UUID) (*entities.User, error) {
 	query := `
 	SELECT id, phone_number, first_name, last_name, email, password, status, role, created_at, updated_at, deleted_at
 	FROM users
@@ -30,7 +31,7 @@ func (r *PGUserRepository) FindUserByID(id *uuid.UUID) (*entities.User, error) {
 	`
 
 	var user entities.User
-	err := r.db.QueryRow(query, id).Scan(
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&user.ID,
 		&user.PhoneNumber,
 		&user.FirstName,
@@ -58,7 +59,7 @@ func (r *PGUserRepository) FindUserByID(id *uuid.UUID) (*entities.User, error) {
 	return &user, nil
 }
 
-func (r *PGUserRepository) Update(user *entities.User) error {
+func (r *PGUserRepository) Update(ctx context.Context, user *entities.User) error {
 	query := "UPDATE users SET "
 	args := []interface{}{}
 	i := 1
@@ -94,7 +95,7 @@ func (r *PGUserRepository) Update(user *entities.User) error {
 	query += " WHERE id = $" + fmt.Sprint(i)
 	args = append(args, user.ID)
 
-	_, err := r.db.Exec(query, args...)
+	_, err := r.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		r.logger.Error("Database error in Update",
 			ports.F("error", err),
@@ -114,18 +115,53 @@ func (r *PGUserRepository) Update(user *entities.User) error {
 	return nil
 }
 
-func (r *PGUserRepository) Delete(id *uuid.UUID) error {
+func (r *PGUserRepository) Delete(ctx context.Context, id *uuid.UUID) error {
 	query := `UPDATE users SET deleted_at = NOW(), status = $2 WHERE id = $1`
-	_, err := r.db.Exec(query, id, entities.Deleted)
+	_, err := r.db.ExecContext(ctx, query, id, entities.Deleted)
 	if err != nil {
 		r.logger.Error("Database error in Delete",
 			ports.F("error", err),
 			ports.F("id", id),
-		)	
+		)
 		if err == sql.ErrNoRows {
 			return errors.ErrUserNotFound
 		}
 		return errors.ErrDeleteUser
+	}
+	return nil
+}
+
+func (r *PGUserRepository) CreateUser(ctx context.Context, user *entities.User) error {
+	query := `
+		INSERT INTO users (id, phone_number, first_name, last_name, email, password, status, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+	`
+
+	_, err := r.db.ExecContext(ctx, query,
+		user.ID,
+		user.PhoneNumber,
+		user.FirstName,
+		user.LastName,
+		user.Email,
+		user.Password,
+		user.Status,
+		user.Role,
+		user.CreatedAt,
+		user.UpdatedAt,
+	)
+
+	if err != nil {
+		r.logger.Error("Database error in CreateUser",
+			ports.F("error", err),
+			ports.F("user", user),
+		)
+		if err.Error() == "duplicate key value violates unique constraint \"users_phone_number_key\"" {
+			return errors.ErrDuplicatePhoneNumber
+		}
+		if err.Error() == "duplicate key value violates unique constraint \"users_email_key\"" {
+			return errors.ErrDuplicateEmail
+		}
+		return errors.ErrCreateUser
 	}
 	return nil
 }

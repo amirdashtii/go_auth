@@ -11,7 +11,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-
 func AuthMiddleware() gin.HandlerFunc {
 	authService := service.NewAuthService()
 
@@ -71,7 +70,7 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		userID := claims["user_id"].(string)
 
-		err = authService.ValidateToken(userID, token)
+		err = authService.ValidateToken(c.Request.Context(), userID, token)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"error": err,

@@ -1,8 +1,10 @@
 package controller
 
 import (
+	"context"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/amirdashtii/go_auth/controller/dto"
 	"github.com/amirdashtii/go_auth/controller/middleware"
@@ -17,7 +19,7 @@ import (
 )
 
 type UserHTTPHandler struct {
-	svc ports.UserService
+	svc    ports.UserService
 	logger ports.Logger
 }
 
@@ -35,7 +37,7 @@ func NewUserHTTPHandler() *UserHTTPHandler {
 		Level:       "info",
 		Environment: "development",
 		ServiceName: "go_auth",
-		Output:      logFile,	
+		Output:      logFile,
 	}
 
 	appLogger := logger.NewZerologLogger(loggerConfig)
@@ -58,6 +60,9 @@ func NewUserRoutes(r *gin.Engine) {
 }
 
 func (h *UserHTTPHandler) GetUserProfileHandler(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
 	userID, exists := c.Get("user_id")
 	if !exists {
 		h.logger.Error("User not authenticated",
@@ -75,13 +80,13 @@ func (h *UserHTTPHandler) GetUserProfileHandler(c *gin.Context) {
 			ports.F("error", errors.ErrInvalidUserID.Message.English),
 			ports.F("user_id", userID),
 		)
-		c.JSON(http.StatusBadRequest, gin.H{	
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error": errors.ErrInvalidUserID,
 		})
 		return
 	}
 
-	profile, err := h.svc.GetProfile(&userIDUUID)
+	profile, err := h.svc.GetProfile(ctx, &userIDUUID)
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			c.JSON(http.StatusNotFound, gin.H{
@@ -99,6 +104,9 @@ func (h *UserHTTPHandler) GetUserProfileHandler(c *gin.Context) {
 }
 
 func (h *UserHTTPHandler) UpdateUserProfileHandler(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
 	userID, exists := c.Get("user_id")
 	if !exists {
 		h.logger.Error("User not authenticated",
@@ -142,7 +150,7 @@ func (h *UserHTTPHandler) UpdateUserProfileHandler(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.UpdateProfile(&userIDUUID, &req); err != nil {
+	if err := h.svc.UpdateProfile(ctx, &userIDUUID, &req); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err,
 		})
@@ -155,6 +163,9 @@ func (h *UserHTTPHandler) UpdateUserProfileHandler(c *gin.Context) {
 }
 
 func (h *UserHTTPHandler) ChangePasswordHandler(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
 	userID, exists := c.Get("user_id")
 	if !exists {
 		h.logger.Error("User not authenticated",
@@ -197,7 +208,7 @@ func (h *UserHTTPHandler) ChangePasswordHandler(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.ChangePassword(&userIDUUID, &req); err != nil {
+	if err := h.svc.ChangePassword(ctx, &userIDUUID, &req); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err,
 		})
@@ -210,6 +221,9 @@ func (h *UserHTTPHandler) ChangePasswordHandler(c *gin.Context) {
 }
 
 func (h *UserHTTPHandler) DeleteUserProfileHandler(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
 	userID, exists := c.Get("user_id")
 	if !exists {
 		h.logger.Error("User not authenticated",
@@ -233,7 +247,7 @@ func (h *UserHTTPHandler) DeleteUserProfileHandler(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.DeleteProfile(&userIDUUID); err != nil {
+	if err := h.svc.DeleteProfile(ctx, &userIDUUID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err,
 		})

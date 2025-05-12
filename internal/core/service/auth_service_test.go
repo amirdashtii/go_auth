@@ -2,6 +2,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -39,7 +40,7 @@ func TestRegister(t *testing.T) {
 	mockAuthRepo.On("Create", mock.Anything).Return(nil).Once()
 
 	// Execute registration
-	err := service.Register(req)
+	err := service.Register(context.Background(), req)
 
 	// Verify results
 	assert.NoError(t, err)
@@ -69,7 +70,7 @@ func TestRegister_DuplicateUser(t *testing.T) {
 	mockAuthRepo.On("Create", mock.Anything).Return(fmt.Errorf("user with this phone number already exists")).Once()
 
 	// Execute registration
-	err := service.Register(req)
+	err := service.Register(context.Background(), req)
 
 	// Verify results
 	assert.Error(t, err)
@@ -110,7 +111,7 @@ func TestLogin(t *testing.T) {
 	mockRedisRepo.On("AddToken", mock.Anything, mock.Anything, mock.Anything).Return(nil).Twice()
 
 	// Execute login
-	tokens, err := service.Login(req)
+	tokens, err := service.Login(context.Background(), req)
 
 	// Verify results
 	assert.NoError(t, err)
@@ -154,7 +155,7 @@ func TestLogin_InvalidPassword(t *testing.T) {
 	mockAuthRepo.On("FindUserByPhoneNumber", &loginReq.PhoneNumber).Return(user, nil).Once()
 
 	// Execute login
-	_, err := service.Login(loginReq)
+	_, err := service.Login(context.Background(), loginReq)
 
 	// Verify results
 	assert.Error(t, err)
@@ -196,7 +197,7 @@ func TestLogin_DeactivatedUser(t *testing.T) {
 	mockAuthRepo.On("FindUserByPhoneNumber", &loginReq.PhoneNumber).Return(user, nil).Once()
 
 	// Execute login
-	_, err := service.Login(loginReq)
+	_, err := service.Login(context.Background(), loginReq)
 
 	// Verify results
 	assert.Error(t, err)
@@ -238,7 +239,7 @@ func TestLogin_DeletedUser(t *testing.T) {
 	mockAuthRepo.On("FindUserByPhoneNumber", &loginReq.PhoneNumber).Return(user, nil).Once()
 
 	// Execute login
-	_, err := service.Login(loginReq)
+	_, err := service.Login(context.Background(), loginReq)
 
 	// Verify results
 	assert.Error(t, err)
@@ -282,7 +283,7 @@ func TestLogin_RedisError(t *testing.T) {
 	mockRedisRepo.On("AddToken", mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("redis error")).Once()
 
 	// Execute login
-	_, err := service.Login(loginReq)
+	_, err := service.Login(context.Background(), loginReq)
 
 	// Verify results
 	assert.Error(t, err)
@@ -312,7 +313,7 @@ func TestLogout(t *testing.T) {
 	mockRedisRepo.On("RemoveToken", userID.String()+":refresh").Return(nil).Once()
 
 	// Execute logout
-	err := service.Logout(userID.String())
+	err := service.Logout(context.Background(), userID.String())
 
 	// Verify results
 	assert.NoError(t, err)
@@ -339,7 +340,7 @@ func TestLogout_RedisError(t *testing.T) {
 	mockRedisRepo.On("RemoveToken", userID.String()+":access").Return(fmt.Errorf("redis error")).Once()
 
 	// Execute logout
-	err := service.Logout(userID.String())
+	err := service.Logout(context.Background(), userID.String())
 
 	// Verify results
 	assert.Error(t, err)
@@ -385,7 +386,7 @@ func TestRefreshToken(t *testing.T) {
 	mockRedisRepo.On("AddToken", mock.Anything, mock.Anything, mock.Anything).Return(nil).Twice()
 
 	// Execute refresh token
-	tokens, err := service.RefreshToken(refreshToken)
+	tokens, err := service.RefreshToken(context.Background(), refreshToken)
 
 	// Verify results
 	assert.NoError(t, err)
@@ -420,7 +421,7 @@ func TestRefreshToken_ExpiredToken(t *testing.T) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	refreshToken, _ := token.SignedString([]byte(config.JWT.Secret))
 
-	_, err := service.RefreshToken(refreshToken)
+	_, err := service.RefreshToken(context.Background(), refreshToken)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid refresh token")
 }
@@ -469,7 +470,7 @@ func TestRefreshToken_RedisError(t *testing.T) {
 	mockRedisRepo.On("AddToken", mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("redis error")).Once()
 
 	// Execute refresh token
-	_, err := service.RefreshToken(refreshToken)
+	_, err := service.RefreshToken(context.Background(), refreshToken)
 
 	// Verify results
 	assert.Error(t, err)
@@ -494,7 +495,7 @@ func TestRefreshToken_InvalidToken(t *testing.T) {
 	refreshToken := "invalid_refresh_token"
 
 	// Execute refresh token
-	_, err := service.RefreshToken(refreshToken)
+	_, err := service.RefreshToken(context.Background(), refreshToken)
 
 	// Verify results
 	assert.Error(t, err)
@@ -532,7 +533,7 @@ func TestRefreshToken_UserNotFound(t *testing.T) {
 	mockAuthRepo.On("FindUserByID", userID).Return(nil, fmt.Errorf("user not found")).Once()
 
 	// Execute refresh token
-	_, err := service.RefreshToken(refreshToken)
+	_, err := service.RefreshToken(context.Background(), refreshToken)
 
 	// Verify results
 	assert.Error(t, err)
@@ -583,7 +584,7 @@ func TestRefreshToken_TokenMismatch(t *testing.T) {
 	mockRedisRepo.On("FindToken", userID.String()+":refresh").Return(storedToken, nil).Once()
 
 	// Execute refresh token
-	_, err := service.RefreshToken(refreshToken)
+	_, err := service.RefreshToken(context.Background(), refreshToken)
 
 	// Verify results
 	assert.Error(t, err)
@@ -616,12 +617,11 @@ func TestValidateToken(t *testing.T) {
 	})
 	accessToken, _ := token.SignedString([]byte(cfg.JWT.Secret))
 
-
 	// Set up mock expectations
 	mockRedisRepo.On("FindToken", userID.String()+":access").Return(accessToken, nil).Once()
 
 	// Execute validate token
-	err := service.ValidateToken(userID.String(), accessToken)
+	err := service.ValidateToken(context.Background(), userID.String(), accessToken)
 
 	// Verify results
 	assert.NoError(t, err)
@@ -648,14 +648,13 @@ func TestValidateToken_InvalidToken(t *testing.T) {
 	mockRedisRepo.On("FindToken", userID.String()+":access").Return("", fmt.Errorf("token not found")).Once()
 
 	// Execute validate token with invalid token
-	err := service.ValidateToken(userID.String(), "invalid_token")
+	err := service.ValidateToken(context.Background(), userID.String(), "invalid_token")
 
 	// Verify results
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to find token")
 	mockRedisRepo.AssertExpectations(t)
 }
-// ... existing code ...
 
 // TestValidateToken_TokenNotFound tests token validation when token is not found in Redis
 func TestValidateToken_TokenNotFound(t *testing.T) {
@@ -683,16 +682,15 @@ func TestValidateToken_TokenNotFound(t *testing.T) {
 
 	// Set up mock expectations
 	mockRedisRepo.On("FindToken", userID.String()+":access").Return("", fmt.Errorf("token not found")).Once()
-	
+
 	// Execute validate token
-	err := service.ValidateToken(userID.String(), accessToken)
+	err := service.ValidateToken(context.Background(), userID.String(), accessToken)
 
 	// Verify results
 	assert.Error(t, err)
 	mockAuthRepo.AssertExpectations(t)
 	mockRedisRepo.AssertExpectations(t)
 }
-
 
 // TestNewAuthService tests the creation of a new auth service
 func TestNewAuthService(t *testing.T) {
@@ -730,7 +728,7 @@ func TestParseAndValidateToken_ExpiredToken(t *testing.T) {
 	expiredToken, _ := token.SignedString([]byte(cfg.JWT.Secret))
 
 	// Execute validate token
-	_, err := service.parseAndValidateToken(expiredToken, "access")
+	_, err := service.parseAndValidateToken(context.Background(), expiredToken, "access")
 
 	// Verify results
 	assert.Error(t, err)
@@ -753,10 +751,10 @@ func TestParseAndValidateToken_InvalidSignature(t *testing.T) {
 	})
 
 	// Create invalid token with wrong secret
-	invalidToken, _ := token.SignedString([]byte("wrong_secret"))	
+	invalidToken, _ := token.SignedString([]byte("wrong_secret"))
 
 	// Execute validate token
-	_, err := service.parseAndValidateToken(invalidToken, "access")
+	_, err := service.parseAndValidateToken(context.Background(), invalidToken, "access")
 
 	// Verify results
 	assert.Error(t, err)
@@ -765,7 +763,6 @@ func TestParseAndValidateToken_InvalidSignature(t *testing.T) {
 
 // TestParseAndValidateToken_MissingClaims tests token parsing with missing required claims
 func TestParseAndValidateToken_MissingClaims(t *testing.T) {
-
 
 	// Create service instance with mock repositories
 	service := &AuthService{}
@@ -779,7 +776,7 @@ func TestParseAndValidateToken_MissingClaims(t *testing.T) {
 	invalidToken, _ := token.SignedString([]byte(cfg.JWT.Secret))
 
 	// Execute validate token
-	_, err := service.parseAndValidateToken(invalidToken, "access")
+	_, err := service.parseAndValidateToken(context.Background(), invalidToken, "access")
 
 	// Verify results
 	assert.Error(t, err)
@@ -799,7 +796,7 @@ func TestParseAndValidateToken_MissingUserID(t *testing.T) {
 	invalidToken, _ := token.SignedString([]byte(cfg.JWT.Secret))
 
 	// Execute validate token
-	_, err := service.parseAndValidateToken(invalidToken, "access")
+	_, err := service.parseAndValidateToken(context.Background(), invalidToken, "access")
 
 	// Verify results
 	assert.Error(t, err)
@@ -820,7 +817,7 @@ func TestParseAndValidateToken_InvalidUserIDFormat(t *testing.T) {
 	invalidToken, _ := token.SignedString([]byte(cfg.JWT.Secret))
 
 	// Execute validate token
-	_, err := service.parseAndValidateToken(invalidToken, "access")
+	_, err := service.parseAndValidateToken(context.Background(), invalidToken, "access")
 
 	// Verify results
 	assert.Error(t, err)
@@ -841,7 +838,7 @@ func TestParseAndValidateToken_InvalidUserIDString(t *testing.T) {
 	invalidToken, _ := token.SignedString([]byte(cfg.JWT.Secret))
 
 	// Execute validate token
-	_, err := service.parseAndValidateToken(invalidToken, "access")
+	_, err := service.parseAndValidateToken(context.Background(), invalidToken, "access")
 
 	// Verify results
 	assert.Error(t, err)

@@ -1,9 +1,12 @@
 package ports
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 type InMemoryRespositoryContracts interface {
-	AddToken(userID, token string, expiration time.Duration) error
-	RemoveToken(userID string) error
-	FindToken(userID string) (string, error)
+	AddToken(ctx context.Context, userID, token string, expiration time.Duration) error
+	RemoveToken(ctx context.Context, userID string) error
+	FindToken(ctx context.Context, userID string) (string, error)
 }

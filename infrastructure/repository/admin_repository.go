@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -13,17 +14,17 @@ import (
 
 type PGAdminRepository struct {
 	db     *sql.DB
-	logger  ports.Logger
+	logger ports.Logger
 }
 
 func NewPGAdminRepository(db *sql.DB, logger ports.Logger) ports.AdminRepository {
 	return &PGAdminRepository{
 		db:     db,
-		logger:  logger,
+		logger: logger,
 	}
 }
 
-func (r *PGAdminRepository) FindUsers(status *entities.StatusType, role *entities.RoleType, sort, order *string) ([]entities.User, error) {
+func (r *PGAdminRepository) FindUsers(ctx context.Context, status *entities.StatusType, role *entities.RoleType, sort, order *string) ([]entities.User, error) {
 	query := fmt.Sprintf(`
 	SELECT * FROM users
 	WHERE status = $1 AND role = $2
@@ -63,7 +64,7 @@ func (r *PGAdminRepository) FindUsers(status *entities.StatusType, role *entitie
 	return users, nil
 }
 
-func (r *PGAdminRepository) AdminGetUserByID(id *uuid.UUID) (*entities.User, error) {
+func (r *PGAdminRepository) AdminGetUserByID(ctx context.Context, id *uuid.UUID) (*entities.User, error) {
 	query := `SELECT * FROM users WHERE id = $1`
 	row := r.db.QueryRow(query, id)
 
@@ -85,7 +86,6 @@ func (r *PGAdminRepository) AdminGetUserByID(id *uuid.UUID) (*entities.User, err
 		r.logger.Error("Database error in AdminGetUserByID",
 			ports.F("error", err),
 			ports.F("user_id", id),
-
 		)
 		if err == sql.ErrNoRows {
 			return nil, errors.ErrUserNotFound
@@ -95,7 +95,7 @@ func (r *PGAdminRepository) AdminGetUserByID(id *uuid.UUID) (*entities.User, err
 	return &user, nil
 }
 
-func (r *PGAdminRepository) AdminUpdateUser(user *entities.User) error {
+func (r *PGAdminRepository) AdminUpdateUser(ctx context.Context, user *entities.User) error {
 	query := "UPDATE users SET "
 	args := []interface{}{}
 	i := 1
@@ -148,7 +148,7 @@ func (r *PGAdminRepository) AdminUpdateUser(user *entities.User) error {
 	return nil
 }
 
-func (r *PGAdminRepository) AdminChangeUserRole(id *uuid.UUID, role *entities.RoleType) error {
+func (r *PGAdminRepository) AdminChangeUserRole(ctx context.Context, id *uuid.UUID, role *entities.RoleType) error {
 	query := `UPDATE users SET role = $1 WHERE id = $2`
 	_, err := r.db.Exec(query, role, id)
 	if err != nil {
@@ -164,7 +164,7 @@ func (r *PGAdminRepository) AdminChangeUserRole(id *uuid.UUID, role *entities.Ro
 	return nil
 }
 
-func (r *PGAdminRepository) AdminChangeUserStatus(id *uuid.UUID, status *entities.StatusType) error {
+func (r *PGAdminRepository) AdminChangeUserStatus(ctx context.Context, id *uuid.UUID, status *entities.StatusType) error {
 	query := `UPDATE users SET status = $1 WHERE id = $2`
 	_, err := r.db.Exec(query, status, id)
 	if err != nil {
@@ -180,7 +180,7 @@ func (r *PGAdminRepository) AdminChangeUserStatus(id *uuid.UUID, status *entitie
 	return nil
 }
 
-func (r *PGAdminRepository) AdminDeleteUser(id *uuid.UUID) error {
+func (r *PGAdminRepository) AdminDeleteUser(ctx context.Context, id *uuid.UUID) error {
 	query := `UPDATE users SET deleted_at = $1, status = $2 WHERE id = $3`
 	_, err := r.db.Exec(query, time.Now(), entities.Deleted, id)
 	if err != nil {

@@ -1,8 +1,10 @@
 package controller
 
 import (
+	"context"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/amirdashtii/go_auth/controller/dto"
 	"github.com/amirdashtii/go_auth/controller/middleware"
@@ -16,7 +18,7 @@ import (
 )
 
 type AuthHTTPHandler struct {
-	svc ports.AuthService
+	svc    ports.AuthService
 	logger ports.Logger
 }
 
@@ -56,6 +58,9 @@ func NewAuthRoutes(r *gin.Engine) {
 }
 
 func (h *AuthHTTPHandler) RegisterHandler(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
 	var req dto.RegisterRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -76,7 +81,7 @@ func (h *AuthHTTPHandler) RegisterHandler(c *gin.Context) {
 		return
 	}
 
-	err := h.svc.Register(&req)
+	err := h.svc.Register(ctx, &req)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -89,6 +94,9 @@ func (h *AuthHTTPHandler) RegisterHandler(c *gin.Context) {
 }
 
 func (h *AuthHTTPHandler) LoginHandler(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
 	var req *dto.LoginRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -109,7 +117,7 @@ func (h *AuthHTTPHandler) LoginHandler(c *gin.Context) {
 		return
 	}
 
-	tokens, err := h.svc.Login(req)
+	tokens, err := h.svc.Login(ctx, req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err,
@@ -121,6 +129,9 @@ func (h *AuthHTTPHandler) LoginHandler(c *gin.Context) {
 }
 
 func (h *AuthHTTPHandler) LogoutHandler(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
 	userID, exists := c.Get("user_id")
 	if !exists {
 		h.logger.Error("User not authenticated",
@@ -145,7 +156,7 @@ func (h *AuthHTTPHandler) LogoutHandler(c *gin.Context) {
 		return
 	}
 
-	err := h.svc.Logout(userIDStr)
+	err := h.svc.Logout(ctx, userIDStr)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -160,6 +171,9 @@ func (h *AuthHTTPHandler) LogoutHandler(c *gin.Context) {
 }
 
 func (h *AuthHTTPHandler) RefreshTokenHandler(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
 	var req dto.RefreshTokenRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -176,11 +190,11 @@ func (h *AuthHTTPHandler) RefreshTokenHandler(c *gin.Context) {
 	if err := validators.ValidateRefreshTokenRequest(&req, h.logger); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err,
-		})	 
+		})
 		return
 	}
 
-	tokens, err := h.svc.RefreshToken(req.RefreshToken)
+	tokens, err := h.svc.RefreshToken(ctx, req.RefreshToken)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err,

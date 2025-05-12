@@ -1,7 +1,9 @@
 package service
 
 import (
+	"context"
 	"os"
+	"time"
 
 	"github.com/amirdashtii/go_auth/controller/dto"
 	"github.com/amirdashtii/go_auth/infrastructure/logger"
@@ -13,7 +15,7 @@ import (
 )
 
 type AdminService struct {
-	db ports.AdminRepository
+	db     ports.AdminRepository
 	logger ports.Logger
 }
 
@@ -28,55 +30,60 @@ func NewAdminService() *AdminService {
 	logfile, err := os.OpenFile("logs/app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		panic(err)
-	}	
+	}
 
 	// Initialize logger with both file and console output
 	loggerConfig := ports.LoggerConfig{
-		Level: "info",
+		Level:       "info",
 		Environment: "development",
 		ServiceName: "go_auth",
-		Output: logfile,
+		Output:      logfile,
 	}
 	appLogger := logger.NewZerologLogger(loggerConfig)
-	
+
 	adminRepo := repository.NewPGAdminRepository(db, appLogger)
 	return &AdminService{
-		db: adminRepo,
+		db:     adminRepo,
 		logger: appLogger,
 	}
 }
 
-func (s *AdminService) GetUsers(status *entities.StatusType, role *entities.RoleType, sort, order *string) ([]dto.AdminUserResponse, error) {
-	users, err := s.db.FindUsers(status, role, sort, order)
+func (s *AdminService) GetUsers(ctx context.Context, status *entities.StatusType, role *entities.RoleType, sort, order *string) ([]dto.AdminUserResponse, error) {
+	users, err := s.db.FindUsers(ctx, status, role, sort, order)
 	if err != nil {
 		s.logger.Error("Error getting users",
 			ports.F("error", err),
+			ports.F("status", status),
+			ports.F("role", role),
 		)
 		return nil, errors.ErrGetUsers
 	}
 
-	var resp []dto.AdminUserResponse
-	for _, u := range users {
-		resp = append(resp, dto.AdminUserResponse{
-			ID:          u.ID.String(),
-			PhoneNumber: u.PhoneNumber,
-			FirstName:   u.FirstName,
-			LastName:    u.LastName,
-			Email:       u.Email,
-			Status:      u.Status.String(),
-			Role:        u.Role.String(),
+	var response []dto.AdminUserResponse
+	for _, user := range users {
+		response = append(response, dto.AdminUserResponse{
+			ID:          user.ID.String(),
+			PhoneNumber: user.PhoneNumber,
+			FirstName:   user.FirstName,
+			LastName:    user.LastName,
+			Email:       user.Email,
+			Status:      user.Status.String(),
+			Role:        user.Role.String(),
+			CreatedAt:   user.CreatedAt,
+			UpdatedAt:   user.UpdatedAt,
 		})
 	}
 
-	return resp, nil
+	return response, nil
 }
 
-func (s *AdminService) AdminGetUserByID(userID *uuid.UUID) (*dto.AdminUserResponse, error) {
-	user, err := s.db.AdminGetUserByID(userID)
+func (s *AdminService) AdminGetUserByID(ctx context.Context, userID *uuid.UUID) (*dto.AdminUserResponse, error) {
+	user, err := s.db.AdminGetUserByID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	resp := &dto.AdminUserResponse{
+
+	return &dto.AdminUserResponse{
 		ID:          user.ID.String(),
 		PhoneNumber: user.PhoneNumber,
 		FirstName:   user.FirstName,
@@ -84,41 +91,47 @@ func (s *AdminService) AdminGetUserByID(userID *uuid.UUID) (*dto.AdminUserRespon
 		Email:       user.Email,
 		Status:      user.Status.String(),
 		Role:        user.Role.String(),
-	}
-	return resp, nil
+		CreatedAt:   user.CreatedAt,
+		UpdatedAt:   user.UpdatedAt,
+	}, nil
 }
 
-func (s *AdminService) AdminUpdateUser(userID *uuid.UUID, req *dto.AdminUserUpdateRequest) error {
+func (s *AdminService) AdminUpdateUser(ctx context.Context, userID *uuid.UUID, updateReq *dto.AdminUserUpdateRequest) error {
 	user := &entities.User{
-		PhoneNumber: req.PhoneNumber,
-		FirstName:   req.FirstName,
-		LastName:    req.LastName,
-		Email:       req.Email,
+		ID:          *userID,
+		PhoneNumber: updateReq.PhoneNumber,
+		FirstName:   updateReq.FirstName,
+		LastName:    updateReq.LastName,
+		Email:       updateReq.Email,
+		UpdatedAt:   time.Now(),
 	}
-	user.ID = *userID
-	if err := s.db.AdminUpdateUser(user); err != nil {
+	if err := s.db.AdminUpdateUser(ctx, user); err != nil {
 		return err
 	}
+
 	return nil
 }
 
-func (s *AdminService) ChangeUserRole(userID *uuid.UUID, role *entities.RoleType) error {
-	if err := s.db.AdminChangeUserRole(userID, role); err != nil {
+func (s *AdminService) ChangeUserRole(ctx context.Context, userID *uuid.UUID, updateRole *entities.RoleType) error {
+	if err := s.db.AdminChangeUserRole(ctx, userID, updateRole); err != nil {
 		return err
 	}
+
 	return nil
 }
 
-func (s *AdminService) ChangeUserStatus(userID *uuid.UUID, status *entities.StatusType) error {
-	if err := s.db.AdminChangeUserStatus(userID, status); err != nil {
+func (s *AdminService) ChangeUserStatus(ctx context.Context, userID *uuid.UUID, updateStatus *entities.StatusType) error {
+	if err := s.db.AdminChangeUserStatus(ctx, userID, updateStatus); err != nil {
 		return err
 	}
+
 	return nil
 }
 
-func (s *AdminService) AdminDeleteUser(userID *uuid.UUID) error {
-	if err := s.db.AdminDeleteUser(userID); err != nil {
+func (s *AdminService) AdminDeleteUser(ctx context.Context, userID *uuid.UUID) error {
+	if err := s.db.AdminDeleteUser(ctx, userID); err != nil {
 		return err
 	}
+
 	return nil
 }

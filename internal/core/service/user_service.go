@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"os"
 
 	"github.com/amirdashtii/go_auth/controller/dto"
@@ -14,7 +15,7 @@ import (
 )
 
 type UserService struct {
-	db ports.UserRepository
+	db     ports.UserRepository
 	logger ports.Logger
 }
 
@@ -33,22 +34,22 @@ func NewUserService() *UserService {
 
 	// Initialize logger with both file and console output
 	loggerConfig := ports.LoggerConfig{
-		Level: "info",
+		Level:       "info",
 		Environment: "development",
 		ServiceName: "go_auth",
-		Output: logfile,
+		Output:      logfile,
 	}
 	appLogger := logger.NewZerologLogger(loggerConfig)
 
 	userRepo := repository.NewPGUserRepository(db, appLogger)
 	return &UserService{
-		db: userRepo,
+		db:     userRepo,
 		logger: appLogger,
 	}
 }
 
-func (s *UserService) GetProfile(userID *uuid.UUID) (*dto.UserProfileResponse, error) {
-	user, err := s.db.FindUserByID(userID)
+func (s *UserService) GetProfile(ctx context.Context, userID *uuid.UUID) (*dto.UserProfileResponse, error) {
+	user, err := s.db.FindUserByID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +75,7 @@ func (s *UserService) GetProfile(userID *uuid.UUID) (*dto.UserProfileResponse, e
 	return &resp, nil
 }
 
-func (s *UserService) UpdateProfile(userID *uuid.UUID, req *dto.UserUpdateRequest) error {
+func (s *UserService) UpdateProfile(ctx context.Context, userID *uuid.UUID, req *dto.UserUpdateRequest) error {
 	user := &entities.User{
 		ID:          *userID,
 		PhoneNumber: req.PhoneNumber,
@@ -83,14 +84,14 @@ func (s *UserService) UpdateProfile(userID *uuid.UUID, req *dto.UserUpdateReques
 		Email:       req.Email,
 	}
 
-	if err := s.db.Update(user); err != nil {
+	if err := s.db.Update(ctx, user); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s *UserService) ChangePassword(userID *uuid.UUID, changePasswordReq *dto.ChangePasswordRequest) error {
-	currentUser, err := s.db.FindUserByID(userID)
+func (s *UserService) ChangePassword(ctx context.Context, userID *uuid.UUID, changePasswordReq *dto.ChangePasswordRequest) error {
+	currentUser, err := s.db.FindUserByID(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -127,7 +128,7 @@ func (s *UserService) ChangePassword(userID *uuid.UUID, changePasswordReq *dto.C
 	user := &entities.User{}
 	user.ID = *userID
 	user.Password = string(hashedNewPassword)
-	if err := s.db.Update(user); err != nil {
+	if err := s.db.Update(ctx, user); err != nil {
 		s.logger.Error("Error updating user password",
 			ports.F("error", err),
 			ports.F("user_id", userID),
@@ -137,8 +138,8 @@ func (s *UserService) ChangePassword(userID *uuid.UUID, changePasswordReq *dto.C
 	return nil
 }
 
-func (s *UserService) DeleteProfile(userID *uuid.UUID) error {
-	if err := s.db.Delete(userID); err != nil {
+func (s *UserService) DeleteProfile(ctx context.Context, userID *uuid.UUID) error {
+	if err := s.db.Delete(ctx, userID); err != nil {
 		return err
 	}
 	return nil

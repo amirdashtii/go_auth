@@ -1,0 +1,14 @@
+all: false
+packages:
+  github.com/amirdashtii/go_auth/internal/core/ports:
+    interfaces:
+      AuthRepository:
+        config:
+          dir: internal/core/service/mocks
+          filename: AuthRepository.go
+          pkgname: mocks
+      InMemoryRespositoryContracts:
+        config:
+          dir: internal/core/service/mocks
+          filename: InMemoryRespositoryContracts.go
+          pkgname: mocks

@@ -9,8 +9,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func (r *RedisRepository) AddToken(userID, token string, expiration time.Duration) error {
-	ctx := context.Background()
+func (r *RedisRepository) AddToken(ctx context.Context, userID, token string, expiration time.Duration) error {
 	err := r.client.Set(ctx, userID, token, expiration).Err()
 	if err != nil {
 		r.logger.Error("Error adding token",
@@ -24,10 +23,9 @@ func (r *RedisRepository) AddToken(userID, token string, expiration time.Duratio
 	return nil
 }
 
-func (r *RedisRepository) RemoveToken(userID string) error {
-	ctx := context.Background()
+func (r *RedisRepository) RemoveToken(ctx context.Context, userID string) error {
 	err := r.client.Del(ctx, userID).Err()
-	if err != nil {	
+	if err != nil {
 		r.logger.Error("Error removing token",
 			ports.F("error", err),
 			ports.F("userID", userID),
@@ -37,11 +35,10 @@ func (r *RedisRepository) RemoveToken(userID string) error {
 	return nil
 }
 
-func (r *RedisRepository) FindToken(userID string) (string, error) {
-	ctx := context.Background()
+func (r *RedisRepository) FindToken(ctx context.Context, userID string) (string, error) {
 	val, err := r.client.Get(ctx, userID).Result()
 	if err != nil {
-		if err == redis.Nil {	
+		if err == redis.Nil {
 			r.logger.Error("Token not found",
 				ports.F("error", err),
 				ports.F("userID", userID),
