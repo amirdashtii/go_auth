@@ -60,8 +60,17 @@ func NewUserRoutes(r *gin.Engine) {
 }
 
 func (h *UserHTTPHandler) GetUserProfileHandler(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
-	defer cancel()
+	ctx := c.Request.Context()
+	if ctx.Err() != nil {
+		h.logger.Error("Context cancelled while handling get profile request",
+			ports.F("error", ctx.Err()),
+			ports.F("path", c.Request.URL.Path),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": errors.ErrContextCancelled.ErrorPersian(),
+		})
+		return
+	}
 
 	userID, exists := c.Get("user_id")
 	if !exists {
@@ -104,8 +113,17 @@ func (h *UserHTTPHandler) GetUserProfileHandler(c *gin.Context) {
 }
 
 func (h *UserHTTPHandler) UpdateUserProfileHandler(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
-	defer cancel()
+	ctx := c.Request.Context()
+	if ctx.Err() != nil {
+		h.logger.Error("Context cancelled while handling update profile request",
+			ports.F("error", ctx.Err()),
+			ports.F("path", c.Request.URL.Path),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": errors.ErrContextCancelled.ErrorPersian(),
+		})
+		return
+	}
 
 	userID, exists := c.Get("user_id")
 	if !exists {
@@ -163,8 +181,17 @@ func (h *UserHTTPHandler) UpdateUserProfileHandler(c *gin.Context) {
 }
 
 func (h *UserHTTPHandler) ChangePasswordHandler(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
-	defer cancel()
+	ctx := c.Request.Context()
+	if ctx.Err() != nil {
+		h.logger.Error("Context cancelled while handling change password request",
+			ports.F("error", ctx.Err()),
+			ports.F("path", c.Request.URL.Path),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": errors.ErrContextCancelled.ErrorPersian(),
+		})
+		return
+	}
 
 	userID, exists := c.Get("user_id")
 	if !exists {

@@ -49,6 +49,13 @@ func NewUserService() *UserService {
 }
 
 func (s *UserService) GetProfile(ctx context.Context, userID *uuid.UUID) (*dto.UserProfileResponse, error) {
+	if ctx.Err() != nil {
+		s.logger.Error("Context cancelled while getting user profile",
+			ports.F("error", ctx.Err()),
+			ports.F("user_id", userID),
+		)
+		return nil, errors.ErrContextCancelled
+	}
 	user, err := s.db.FindUserByID(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -76,6 +83,13 @@ func (s *UserService) GetProfile(ctx context.Context, userID *uuid.UUID) (*dto.U
 }
 
 func (s *UserService) UpdateProfile(ctx context.Context, userID *uuid.UUID, req *dto.UserUpdateRequest) error {
+	if ctx.Err() != nil {
+		s.logger.Error("Context cancelled while updating user profile",
+			ports.F("error", ctx.Err()),
+			ports.F("user_id", userID),
+		)
+		return errors.ErrContextCancelled
+	}
 	user := &entities.User{
 		ID:          *userID,
 		PhoneNumber: req.PhoneNumber,
@@ -91,6 +105,13 @@ func (s *UserService) UpdateProfile(ctx context.Context, userID *uuid.UUID, req 
 }
 
 func (s *UserService) ChangePassword(ctx context.Context, userID *uuid.UUID, changePasswordReq *dto.ChangePasswordRequest) error {
+	if ctx.Err() != nil {
+		s.logger.Error("Context cancelled while changing user password",
+			ports.F("error", ctx.Err()),
+			ports.F("user_id", userID),
+		)
+		return errors.ErrContextCancelled
+	}
 	currentUser, err := s.db.FindUserByID(ctx, userID)
 	if err != nil {
 		return err
@@ -139,6 +160,14 @@ func (s *UserService) ChangePassword(ctx context.Context, userID *uuid.UUID, cha
 }
 
 func (s *UserService) DeleteProfile(ctx context.Context, userID *uuid.UUID) error {
+	if ctx.Err() != nil {
+		s.logger.Error("Context cancelled while deleting user profile",
+			ports.F("error", ctx.Err()),
+			ports.F("user_id", userID),
+		)
+		return errors.ErrContextCancelled
+	}
+
 	if err := s.db.Delete(ctx, userID); err != nil {
 		return err
 	}

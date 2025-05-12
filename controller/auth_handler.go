@@ -1,10 +1,8 @@
 package controller
 
 import (
-	"context"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/amirdashtii/go_auth/controller/dto"
 	"github.com/amirdashtii/go_auth/controller/middleware"
@@ -58,8 +56,17 @@ func NewAuthRoutes(r *gin.Engine) {
 }
 
 func (h *AuthHTTPHandler) RegisterHandler(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
-	defer cancel()
+	ctx := c.Request.Context()
+	if ctx.Err() != nil {
+		h.logger.Error("Context cancelled while handling register request",
+			ports.F("error", ctx.Err()),
+			ports.F("path", c.Request.URL.Path),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": errors.ErrContextCancelled.ErrorPersian(),
+		})
+		return
+	}
 
 	var req dto.RegisterRequest
 
@@ -94,8 +101,17 @@ func (h *AuthHTTPHandler) RegisterHandler(c *gin.Context) {
 }
 
 func (h *AuthHTTPHandler) LoginHandler(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
-	defer cancel()
+	ctx := c.Request.Context()
+	if ctx.Err() != nil {
+		h.logger.Error("Context cancelled while handling login request",
+			ports.F("error", ctx.Err()),
+			ports.F("path", c.Request.URL.Path),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": errors.ErrContextCancelled.ErrorPersian(),
+		})
+		return
+	}
 
 	var req *dto.LoginRequest
 
@@ -129,8 +145,17 @@ func (h *AuthHTTPHandler) LoginHandler(c *gin.Context) {
 }
 
 func (h *AuthHTTPHandler) LogoutHandler(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
-	defer cancel()
+	ctx := c.Request.Context()
+	if ctx.Err() != nil {
+		h.logger.Error("Context cancelled while handling logout request",
+			ports.F("error", ctx.Err()),
+			ports.F("path", c.Request.URL.Path),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": errors.ErrContextCancelled.ErrorPersian(),
+		})
+		return
+	}
 
 	userID, exists := c.Get("user_id")
 	if !exists {
@@ -171,8 +196,17 @@ func (h *AuthHTTPHandler) LogoutHandler(c *gin.Context) {
 }
 
 func (h *AuthHTTPHandler) RefreshTokenHandler(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
-	defer cancel()
+	ctx := c.Request.Context()
+	if ctx.Err() != nil {
+		h.logger.Error("Context cancelled while handling refresh token request",
+			ports.F("error", ctx.Err()),
+			ports.F("path", c.Request.URL.Path),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": errors.ErrContextCancelled.ErrorPersian(),
+		})
+		return
+	}
 
 	var req dto.RefreshTokenRequest
 

@@ -15,6 +15,15 @@ func AuthMiddleware() gin.HandlerFunc {
 	authService := service.NewAuthService()
 
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		if ctx.Err() != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": errors.ErrContextCancelled,
+			})
+			c.Abort()
+			return
+		}
+
 		token := c.GetHeader("Authorization")
 		if token == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{
@@ -70,7 +79,7 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		userID := claims["user_id"].(string)
 
-		err = authService.ValidateToken(c.Request.Context(), userID, token)
+		err = authService.ValidateToken(ctx, userID, token)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"error": err,

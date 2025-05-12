@@ -64,6 +64,14 @@ func NewAuthService() *AuthService {
 }
 
 func (s *AuthService) Register(ctx context.Context, req *dto.RegisterRequest) error {
+	if ctx.Err() != nil {
+		s.logger.Error("Context cancelled while registering user",
+			ports.F("error", ctx.Err()),
+			ports.F("phone_number", req.PhoneNumber),
+		)
+		return errors.ErrContextCancelled
+	}
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		s.logger.Error("Error hashing password",
@@ -72,17 +80,25 @@ func (s *AuthService) Register(ctx context.Context, req *dto.RegisterRequest) er
 		return errors.ErrCreateUser
 	}
 
-	user := entities.User{
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	
+	user := &entities.User{
+		ID:          uuid.New(),
 		PhoneNumber: req.PhoneNumber,
 		Password:    string(hashedPassword),
 		Status:      entities.Active,
 		Role:        entities.UserRole,
-		ID:          uuid.New(),
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
+	
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
 
-	if err := s.db.Create(ctx, &user); err != nil {
+	if err := s.db.Create(ctx, user); err != nil {
 		return errors.ErrCreateUser
 	}
 
@@ -90,7 +106,14 @@ func (s *AuthService) Register(ctx context.Context, req *dto.RegisterRequest) er
 }
 
 func (s *AuthService) Login(ctx context.Context, loginReq *dto.LoginRequest) (*entities.TokenPair, error) {
-	// Find user
+	if ctx.Err() != nil {
+		s.logger.Error("Context cancelled while logging in user",
+			ports.F("error", ctx.Err()),
+			ports.F("phone_number", loginReq.PhoneNumber),
+		)
+		return nil, errors.ErrContextCancelled
+	}
+	
 	user, err := s.db.FindUserByPhoneNumber(ctx, &loginReq.PhoneNumber)
 	if err != nil {
 		return nil, err
@@ -129,7 +152,24 @@ func (s *AuthService) Login(ctx context.Context, loginReq *dto.LoginRequest) (*e
 }
 
 func (s *AuthService) Logout(ctx context.Context, userID string) error {
+	if ctx.Err() != nil {
+		s.logger.Error("Context cancelled while logging out user",
+			ports.F("error", ctx.Err()),
+			ports.F("user_id", userID),
+		)
+		return errors.ErrContextCancelled
+	}
+
 	err := s.redis.RemoveToken(ctx, userID+":access")
+	if err != nil {
+		return err
+	}
+
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
+	err = s.redis.RemoveToken(ctx, userID+":refresh")
 	if err != nil {
 		return err
 	}
@@ -138,14 +178,30 @@ func (s *AuthService) Logout(ctx context.Context, userID string) error {
 }
 
 func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*entities.TokenPair, error) {
+	if ctx.Err() != nil {
+		s.logger.Error("Context cancelled while refreshing token",
+			ports.F("error", ctx.Err()),
+			ports.F("refresh_token", refreshToken),
+		)
+		return nil, errors.ErrContextCancelled
+	}
+
 	user, err := s.parseAndValidateToken(ctx, refreshToken, "refresh")
 	if err != nil {
 		return nil, err
 	}
 
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+
 	storedToken, err := s.redis.FindToken(ctx, user.ID.String()+":refresh")
 	if err != nil {
 		return nil, err
+	}
+
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
 	}
 
 	if storedToken != refreshToken {
@@ -160,6 +216,10 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*e
 		return nil, err
 	}
 
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+
 	tokenPair, err := s.createTokenPair(ctx, user)
 	if err != nil {
 		return nil, err
@@ -169,9 +229,17 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*e
 }
 
 func (s *AuthService) createTokenPair(ctx context.Context, user *entities.User) (*entities.TokenPair, error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+
 	accessToken, err := s.createToken(ctx, user, accessTokenExpiration, "access")
 	if err != nil {
 		return nil, err
+	}
+
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
 	}
 
 	refreshToken, err := s.createToken(ctx, user, refreshTokenExpiration, "refresh")
@@ -179,9 +247,17 @@ func (s *AuthService) createTokenPair(ctx context.Context, user *entities.User) 
 		return nil, err
 	}
 
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+
 	err = s.redis.AddToken(ctx, user.ID.String()+":access", accessToken, accessTokenExpiration)
 	if err != nil {
 		return nil, err
+	}
+
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
 	}
 
 	err = s.redis.AddToken(ctx, user.ID.String()+":refresh", refreshToken, refreshTokenExpiration)
@@ -196,6 +272,10 @@ func (s *AuthService) createTokenPair(ctx context.Context, user *entities.User) 
 }
 
 func (s *AuthService) createToken(ctx context.Context, user *entities.User, expiration time.Duration, tokenType string) (string, error) {
+	if ctx.Err() != nil {
+		return "", ctx.Err()
+	}
+
 	claims := jwt.MapClaims{
 		"user_id":    user.ID,
 		"role":       user.Role,
@@ -208,6 +288,10 @@ func (s *AuthService) createToken(ctx context.Context, user *entities.User, expi
 	config, err := config.LoadConfig()
 	if err != nil {
 		return "", err
+	}
+
+	if ctx.Err() != nil {
+		return "", ctx.Err()
 	}
 
 	jwtSecret := config.JWT.Secret
@@ -224,9 +308,17 @@ func (s *AuthService) createToken(ctx context.Context, user *entities.User, expi
 }
 
 func (s *AuthService) parseAndValidateToken(ctx context.Context, token string, expectedType string) (*entities.User, error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+
 	config, err := config.LoadConfig()
 	if err != nil {
 		return nil, err
+	}
+
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
 	}
 
 	jwtSecret := config.JWT.Secret
@@ -240,6 +332,10 @@ func (s *AuthService) parseAndValidateToken(ctx context.Context, token string, e
 			ports.F("token", token),
 		)
 		return nil, errors.ErrInvalidToken
+	}
+
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
 	}
 
 	claims, ok := parsedToken.Claims.(jwt.MapClaims)
@@ -300,10 +396,19 @@ func (s *AuthService) parseAndValidateToken(ctx context.Context, token string, e
 		return nil, errors.ErrInvalidToken
 	}
 
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+
 	user, err := s.db.FindUserByID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
+
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+
 	if user.Status == entities.Deleted {
 		s.logger.Error("User is deleted",
 			ports.F("user_id", userID),
@@ -319,10 +424,24 @@ func (s *AuthService) parseAndValidateToken(ctx context.Context, token string, e
 
 	return user, nil
 }
+
 func (s *AuthService) ValidateToken(ctx context.Context, userID, token string) error {
+	if ctx.Err() != nil {
+		s.logger.Error("Context cancelled while validating token",
+			ports.F("error", ctx.Err()),
+			ports.F("user_id", userID),
+			ports.F("token", token),
+		)
+		return errors.ErrContextCancelled
+	}
+
 	storedToken, err := s.redis.FindToken(ctx, userID+":access")
 	if err != nil {
 		return err
+	}
+
+	if ctx.Err() != nil {
+		return ctx.Err()
 	}
 
 	if storedToken != token {

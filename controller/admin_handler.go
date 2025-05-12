@@ -62,8 +62,17 @@ func NewAdminRoutes(r *gin.Engine) {
 }
 
 func (h *AdminHTTPHandler) GetUsersHandler(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
-	defer cancel()
+	ctx := c.Request.Context()
+	if ctx.Err() != nil {
+		h.logger.Error("Context cancelled while handling get users request",
+			ports.F("error", ctx.Err()),
+			ports.F("path", c.Request.URL.Path),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": errors.ErrContextCancelled.ErrorPersian(),
+		})
+		return
+	}
 
 	role, exists := c.Get("role")
 	if !exists {
@@ -235,8 +244,17 @@ func (h *AdminHTTPHandler) UpdateUserHandler(c *gin.Context) {
 }
 
 func (h *AdminHTTPHandler) ChangeUserRoleHandler(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
-	defer cancel()
+	ctx := c.Request.Context()
+	if ctx.Err() != nil {
+		h.logger.Error("Context cancelled while handling change user role request",
+			ports.F("error", ctx.Err()),
+			ports.F("path", c.Request.URL.Path),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": errors.ErrContextCancelled.ErrorPersian(),
+		})
+		return
+	}
 
 	role, exists := c.Get("role")
 	if !exists {
@@ -305,8 +323,17 @@ func (h *AdminHTTPHandler) ChangeUserRoleHandler(c *gin.Context) {
 }
 
 func (h *AdminHTTPHandler) ChangeUserStatusHandler(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
-	defer cancel()
+	ctx := c.Request.Context()
+	if ctx.Err() != nil {
+		h.logger.Error("Context cancelled while handling change user status request",
+			ports.F("error", ctx.Err()),
+			ports.F("path", c.Request.URL.Path),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": errors.ErrContextCancelled.ErrorPersian(),
+		})
+		return
+	}
 
 	role, exists := c.Get("role")
 	if !exists {
@@ -375,8 +402,17 @@ func (h *AdminHTTPHandler) ChangeUserStatusHandler(c *gin.Context) {
 }
 
 func (h *AdminHTTPHandler) DeleteUserHandler(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
-	defer cancel()
+	ctx := c.Request.Context()
+	if ctx.Err() != nil {
+		h.logger.Error("Context cancelled while handling delete user request",
+			ports.F("error", ctx.Err()),
+			ports.F("path", c.Request.URL.Path),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": errors.ErrContextCancelled.ErrorPersian(),
+		})
+		return
+	}
 
 	role, exists := c.Get("role")
 	if !exists {

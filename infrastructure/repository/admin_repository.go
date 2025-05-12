@@ -25,13 +25,21 @@ func NewPGAdminRepository(db *sql.DB, logger ports.Logger) ports.AdminRepository
 }
 
 func (r *PGAdminRepository) FindUsers(ctx context.Context, status *entities.StatusType, role *entities.RoleType, sort, order *string) ([]entities.User, error) {
+	if ctx.Err() != nil {
+		r.logger.Error("Context cancelled while finding users",
+			ports.F("error", ctx.Err()),
+			ports.F("status", status),
+			ports.F("role", role),
+		)
+		return nil, errors.ErrContextCancelled
+	}
 	query := fmt.Sprintf(`
 	SELECT * FROM users
 	WHERE status = $1 AND role = $2
 	ORDER BY %s %s
 	`, *sort, *order)
 
-	rows, err := r.db.Query(query, status, role)
+	rows, err := r.db.QueryContext(ctx, query, status, role)
 	if err != nil {
 		return nil, err
 	}
@@ -65,8 +73,15 @@ func (r *PGAdminRepository) FindUsers(ctx context.Context, status *entities.Stat
 }
 
 func (r *PGAdminRepository) AdminGetUserByID(ctx context.Context, id *uuid.UUID) (*entities.User, error) {
+	if ctx.Err() != nil {
+		r.logger.Error("Context cancelled while getting user by ID",
+			ports.F("error", ctx.Err()),
+			ports.F("user_id", id),
+		)
+		return nil, errors.ErrContextCancelled
+	}
 	query := `SELECT * FROM users WHERE id = $1`
-	row := r.db.QueryRow(query, id)
+	row := r.db.QueryRowContext(ctx, query, id)
 
 	var user entities.User
 	err := row.Scan(
@@ -96,6 +111,13 @@ func (r *PGAdminRepository) AdminGetUserByID(ctx context.Context, id *uuid.UUID)
 }
 
 func (r *PGAdminRepository) AdminUpdateUser(ctx context.Context, user *entities.User) error {
+	if ctx.Err() != nil {
+		r.logger.Error("Context cancelled while updating user",
+			ports.F("error", ctx.Err()),
+			ports.F("user_id", user.ID),
+		)
+		return errors.ErrContextCancelled
+	}
 	query := "UPDATE users SET "
 	args := []interface{}{}
 	i := 1
@@ -149,8 +171,16 @@ func (r *PGAdminRepository) AdminUpdateUser(ctx context.Context, user *entities.
 }
 
 func (r *PGAdminRepository) AdminChangeUserRole(ctx context.Context, id *uuid.UUID, role *entities.RoleType) error {
+	if ctx.Err() != nil {
+		r.logger.Error("Context cancelled while changing user role",
+			ports.F("error", ctx.Err()),
+			ports.F("user_id", id),
+			ports.F("new_role", role),
+		)
+		return errors.ErrContextCancelled
+	}
 	query := `UPDATE users SET role = $1 WHERE id = $2`
-	_, err := r.db.Exec(query, role, id)
+	_, err := r.db.ExecContext(ctx, query, role, id)
 	if err != nil {
 		r.logger.Error("Database error in AdminChangeUserRole",
 			ports.F("error", err),
@@ -165,8 +195,16 @@ func (r *PGAdminRepository) AdminChangeUserRole(ctx context.Context, id *uuid.UU
 }
 
 func (r *PGAdminRepository) AdminChangeUserStatus(ctx context.Context, id *uuid.UUID, status *entities.StatusType) error {
+	if ctx.Err() != nil {
+		r.logger.Error("Context cancelled while changing user status",
+			ports.F("error", ctx.Err()),
+			ports.F("user_id", id),
+			ports.F("new_status", status),
+		)
+		return errors.ErrContextCancelled
+	}
 	query := `UPDATE users SET status = $1 WHERE id = $2`
-	_, err := r.db.Exec(query, status, id)
+	_, err := r.db.ExecContext(ctx, query, status, id)
 	if err != nil {
 		r.logger.Error("Database error in AdminChangeUserStatus",
 			ports.F("error", err),
@@ -181,8 +219,15 @@ func (r *PGAdminRepository) AdminChangeUserStatus(ctx context.Context, id *uuid.
 }
 
 func (r *PGAdminRepository) AdminDeleteUser(ctx context.Context, id *uuid.UUID) error {
+	if ctx.Err() != nil {
+		r.logger.Error("Context cancelled while deleting user",
+			ports.F("error", ctx.Err()),
+			ports.F("user_id", id),
+		)
+		return errors.ErrContextCancelled
+	}
 	query := `UPDATE users SET deleted_at = $1, status = $2 WHERE id = $3`
-	_, err := r.db.Exec(query, time.Now(), entities.Deleted, id)
+	_, err := r.db.ExecContext(ctx, query, time.Now(), entities.Deleted, id)
 	if err != nil {
 		r.logger.Error("Database error in AdminDeleteUser",
 			ports.F("error", err),

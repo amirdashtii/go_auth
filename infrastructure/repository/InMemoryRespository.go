@@ -10,6 +10,16 @@ import (
 )
 
 func (r *RedisRepository) AddToken(ctx context.Context, userID, token string, expiration time.Duration) error {
+	if ctx.Err() != nil {
+		r.logger.Error("Context cancelled while adding token",
+			ports.F("error", ctx.Err()),
+			ports.F("userID", userID),
+			ports.F("token", token),
+			ports.F("expiration", expiration),
+		)
+		return errors.ErrContextCancelled
+	}
+
 	err := r.client.Set(ctx, userID, token, expiration).Err()
 	if err != nil {
 		r.logger.Error("Error adding token",
@@ -24,6 +34,14 @@ func (r *RedisRepository) AddToken(ctx context.Context, userID, token string, ex
 }
 
 func (r *RedisRepository) RemoveToken(ctx context.Context, userID string) error {
+	if ctx.Err() != nil {
+		r.logger.Error("Context cancelled while removing token",
+			ports.F("error", ctx.Err()),
+			ports.F("userID", userID),
+		)
+		return errors.ErrContextCancelled
+	}
+
 	err := r.client.Del(ctx, userID).Err()
 	if err != nil {
 		r.logger.Error("Error removing token",
@@ -36,6 +54,14 @@ func (r *RedisRepository) RemoveToken(ctx context.Context, userID string) error 
 }
 
 func (r *RedisRepository) FindToken(ctx context.Context, userID string) (string, error) {
+	if ctx.Err() != nil {
+		r.logger.Error("Context cancelled while finding token",
+			ports.F("error", ctx.Err()),
+			ports.F("userID", userID),
+		)
+		return "", errors.ErrContextCancelled
+	}
+
 	val, err := r.client.Get(ctx, userID).Result()
 	if err != nil {
 		if err == redis.Nil {

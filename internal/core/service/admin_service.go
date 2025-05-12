@@ -48,7 +48,14 @@ func NewAdminService() *AdminService {
 	}
 }
 
-func (s *AdminService) GetUsers(ctx context.Context, status *entities.StatusType, role *entities.RoleType, sort, order *string) ([]dto.AdminUserResponse, error) {
+func (s *AdminService) GetUsers(ctx context.Context, status *entities.StatusType, role *entities.RoleType, sort, order *string) ([]dto.AdminUserResponse, error) {	if ctx.Err() != nil {
+		s.logger.Error("Context cancelled while getting users",
+			ports.F("error", ctx.Err()),
+			ports.F("status", status),
+			ports.F("role", role),
+		)
+		return nil, errors.ErrContextCancelled
+	}
 	users, err := s.db.FindUsers(ctx, status, role, sort, order)
 	if err != nil {
 		s.logger.Error("Error getting users",
@@ -73,11 +80,17 @@ func (s *AdminService) GetUsers(ctx context.Context, status *entities.StatusType
 			UpdatedAt:   user.UpdatedAt,
 		})
 	}
-
 	return response, nil
 }
 
 func (s *AdminService) AdminGetUserByID(ctx context.Context, userID *uuid.UUID) (*dto.AdminUserResponse, error) {
+	if ctx.Err() != nil {
+		s.logger.Error("Context cancelled while getting user by ID",
+			ports.F("error", ctx.Err()),
+			ports.F("user_id", userID),
+		)
+		return nil, errors.ErrContextCancelled
+	}
 	user, err := s.db.AdminGetUserByID(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -97,6 +110,13 @@ func (s *AdminService) AdminGetUserByID(ctx context.Context, userID *uuid.UUID) 
 }
 
 func (s *AdminService) AdminUpdateUser(ctx context.Context, userID *uuid.UUID, updateReq *dto.AdminUserUpdateRequest) error {
+	if ctx.Err() != nil {
+		s.logger.Error("Context cancelled while updating user",
+			ports.F("error", ctx.Err()),
+			ports.F("user_id", userID),
+		)
+		return errors.ErrContextCancelled
+	}
 	user := &entities.User{
 		ID:          *userID,
 		PhoneNumber: updateReq.PhoneNumber,
@@ -113,6 +133,14 @@ func (s *AdminService) AdminUpdateUser(ctx context.Context, userID *uuid.UUID, u
 }
 
 func (s *AdminService) ChangeUserRole(ctx context.Context, userID *uuid.UUID, updateRole *entities.RoleType) error {
+	if ctx.Err() != nil {
+		s.logger.Error("Context cancelled while changing user role",
+			ports.F("error", ctx.Err()),
+			ports.F("user_id", userID),
+			ports.F("new_role", updateRole),
+		)
+		return errors.ErrContextCancelled
+	}
 	if err := s.db.AdminChangeUserRole(ctx, userID, updateRole); err != nil {
 		return err
 	}
@@ -121,6 +149,14 @@ func (s *AdminService) ChangeUserRole(ctx context.Context, userID *uuid.UUID, up
 }
 
 func (s *AdminService) ChangeUserStatus(ctx context.Context, userID *uuid.UUID, updateStatus *entities.StatusType) error {
+	if ctx.Err() != nil {
+		s.logger.Error("Context cancelled while changing user status",
+			ports.F("error", ctx.Err()),
+			ports.F("user_id", userID),
+			ports.F("new_status", updateStatus),
+		)
+		return errors.ErrContextCancelled
+	}
 	if err := s.db.AdminChangeUserStatus(ctx, userID, updateStatus); err != nil {
 		return err
 	}
@@ -129,6 +165,13 @@ func (s *AdminService) ChangeUserStatus(ctx context.Context, userID *uuid.UUID, 
 }
 
 func (s *AdminService) AdminDeleteUser(ctx context.Context, userID *uuid.UUID) error {
+	if ctx.Err() != nil {
+		s.logger.Error("Context cancelled while deleting user",
+			ports.F("error", ctx.Err()),
+			ports.F("user_id", userID),
+		)
+		return errors.ErrContextCancelled
+	}
 	if err := s.db.AdminDeleteUser(ctx, userID); err != nil {
 		return err
 	}

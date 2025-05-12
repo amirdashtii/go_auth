@@ -65,4 +65,6 @@ var (
 	ErrInvalidOldPassword  = New(ValidationError, "Old password is invalid", "رمز عبور قدیمی نامعتبر است", nil)
 	ErrInvalidNewPassword  = New(ValidationError, "New password must be at least 8 characters and include uppercase, lowercase, and a number", "رمز عبور جدید باید حداقل ۸ کاراکتر و شامل حروف بزرگ، کوچک و عدد باشد", nil)
 	ErrInvalidRefreshToken = New(ValidationError, "Refresh token is invalid", "توکن بروزرسانی نامعتبر است", nil)
+
+	ErrContextCancelled = New(InternalError, "Operation cancelled due to context cancellation", "عملیات به دلیل لغو درخواست متوقف شد", nil)
 )
