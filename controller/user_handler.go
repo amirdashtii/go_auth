@@ -59,6 +59,17 @@ func NewUserRoutes(r *gin.Engine) {
 	userGroup.DELETE("/me", h.DeleteUserProfileHandler)
 }
 
+// GetUserProfileHandler godoc
+// @Summary Get user profile
+// @Description Get current user's profile information
+// @Tags users
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /users/me [get]
 func (h *UserHTTPHandler) GetUserProfileHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	if ctx.Err() != nil {
@@ -112,6 +123,19 @@ func (h *UserHTTPHandler) GetUserProfileHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"profile": profile})
 }
 
+// UpdateUserProfileHandler godoc
+// @Summary Update user profile
+// @Description Update current user's profile information
+// @Tags users
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body dto.UserUpdateRequest true "Update User Request"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /users/me [put]
 func (h *UserHTTPHandler) UpdateUserProfileHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	if ctx.Err() != nil {
@@ -180,6 +204,19 @@ func (h *UserHTTPHandler) UpdateUserProfileHandler(c *gin.Context) {
 	})
 }
 
+// ChangePasswordHandler godoc
+// @Summary Change user password
+// @Description Change current user's password
+// @Tags users
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body dto.ChangePasswordRequest true "Change Password Request"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /users/me/change-password [put]
 func (h *UserHTTPHandler) ChangePasswordHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	if ctx.Err() != nil {
@@ -247,6 +284,17 @@ func (h *UserHTTPHandler) ChangePasswordHandler(c *gin.Context) {
 	})
 }
 
+// DeleteUserProfileHandler godoc
+// @Summary Delete user profile
+// @Description Delete current user's profile
+// @Tags users
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} map[string]string
+// @Failure 401 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /users/me [delete]
 func (h *UserHTTPHandler) DeleteUserProfileHandler(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()

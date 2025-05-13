@@ -50,17 +50,29 @@ func NewAdminHTTPHandler() *AdminHTTPHandler {
 func NewAdminRoutes(r *gin.Engine) {
 	h := NewAdminHTTPHandler()
 
-	adminGroup := r.Group("/admin")
-	adminGroup.Use(middleware.AuthMiddleware())
+	usersGroup := r.Group("/users")
+	usersGroup.Use(middleware.AuthMiddleware())
 
-	adminGroup.GET("/users", h.GetUsersHandler)
-	adminGroup.GET("/users/:id", h.GetUserByIDHandler)
-	adminGroup.PUT("/users/:id", h.UpdateUserHandler)
-	adminGroup.PUT("/users/:id/role", h.ChangeUserRoleHandler)
-	adminGroup.PUT("/users/:id/status", h.ChangeUserStatusHandler)
-	adminGroup.DELETE("/users/:id", h.DeleteUserHandler)
+	usersGroup.GET("", h.GetUsersHandler)
+	usersGroup.GET("/:id", h.GetUserByIDHandler)
+	usersGroup.PUT("/:id", h.UpdateUserHandler)
+	usersGroup.PUT("/:id/role", h.ChangeUserRoleHandler)
+	usersGroup.PUT("/:id/status", h.ChangeUserStatusHandler)
+	usersGroup.DELETE("/:id", h.DeleteUserHandler)
 }
 
+// GetUsersHandler godoc
+// @Summary Get all users
+// @Description Get list of all users (admin only)
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 403 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /users [get]
 func (h *AdminHTTPHandler) GetUsersHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	if ctx.Err() != nil {
@@ -124,6 +136,20 @@ func (h *AdminHTTPHandler) GetUsersHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": dto.AdminUserListResponse{Users: resp}})
 }
 
+// GetUserByIDHandler godoc
+// @Summary Get user by ID
+// @Description Get user information by ID (admin only)
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "User ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 403 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /users/{id} [get]
 func (h *AdminHTTPHandler) GetUserByIDHandler(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
@@ -174,6 +200,22 @@ func (h *AdminHTTPHandler) GetUserByIDHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": resp})
 }
 
+// UpdateUserHandler godoc
+// @Summary Update user
+// @Description Update user information by ID (admin only)
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "User ID"
+// @Param request body dto.AdminUserUpdateRequest true "Update User Request"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 403 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /users/{id} [put]
 func (h *AdminHTTPHandler) UpdateUserHandler(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
@@ -243,6 +285,22 @@ func (h *AdminHTTPHandler) UpdateUserHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "User updated successfully"})
 }
 
+// ChangeUserRoleHandler godoc
+// @Summary Change user role
+// @Description Change user role by ID (admin only)
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "User ID"
+// @Param request body dto.AdminUserUpdateStatusRequest true "Change Status Request"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 403 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /users/{id}/role [put]
 func (h *AdminHTTPHandler) ChangeUserRoleHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	if ctx.Err() != nil {
@@ -322,6 +380,22 @@ func (h *AdminHTTPHandler) ChangeUserRoleHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "User role changed successfully"})
 }
 
+// ChangeUserStatusHandler godoc
+// @Summary Change user status
+// @Description Change user status by ID (admin only)
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "User ID"
+// @Param request body dto.AdminUserUpdateStatusRequest true "Change Status Request"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 403 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /users/{id}/status [put]
 func (h *AdminHTTPHandler) ChangeUserStatusHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	if ctx.Err() != nil {
@@ -401,6 +475,20 @@ func (h *AdminHTTPHandler) ChangeUserStatusHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "User status changed successfully"})
 }
 
+// DeleteUserHandler godoc
+// @Summary Delete user
+// @Description Delete user by ID (admin only)
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "User ID"
+// @Success 200 {object} map[string]string
+// @Failure 401 {object} map[string]interface{}
+// @Failure 403 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /users/{id} [delete]
 func (h *AdminHTTPHandler) DeleteUserHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	if ctx.Err() != nil {

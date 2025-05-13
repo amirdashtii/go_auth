@@ -25,6 +25,8 @@ type AdminUserResponse struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
+// AdminUserUpdateRequest is used for admin updating user profile
+// swagger:model
 type AdminUserUpdateRequest struct {
 	PhoneNumber string `json:"phone_number" validate:"omitempty,phone"`
 	FirstName   string `json:"first_name" validate:"omitempty,min=2,max=50"`
@@ -32,9 +34,14 @@ type AdminUserUpdateRequest struct {
 	Email       string `json:"email" validate:"omitempty,email"`
 }
 
+// AdminUserUpdateRoleRequest is used for admin changing user role
+// swagger:model
 type AdminUserUpdateRoleRequest struct {
 	Role string `json:"role" binding:"required,role"`
 }
+
+// AdminUserUpdateStatusRequest is used for admin changing user status
+// swagger:model
 type AdminUserUpdateStatusRequest struct {
 	Status string `json:"status" binding:"required,status"`
 }

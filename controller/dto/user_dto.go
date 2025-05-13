@@ -8,6 +8,7 @@ type UserProfileResponse struct {
 	Email       string `json:"email"`
 }
 
+// UserUpdateRequest is used for updating user profile
 type UserUpdateRequest struct {
 	PhoneNumber string `json:"phone_number" validate:"omitempty,phone"`
 	FirstName   string `json:"first_name" validate:"omitempty,name"`
@@ -15,6 +16,7 @@ type UserUpdateRequest struct {
 	Email       string `json:"email" validate:"omitempty,email"`
 }
 
+// ChangePasswordRequest is used for changing user password
 type ChangePasswordRequest struct {
 	OldPassword string `json:"old_password" validate:"required,password"`
 	NewPassword string `json:"new_password" validate:"required,password"`

@@ -55,6 +55,17 @@ func NewAuthRoutes(r *gin.Engine) {
 	authGroup.POST("/refresh-token", h.RefreshTokenHandler)
 }
 
+// RegisterHandler godoc
+// @Summary Register a new user
+// @Description Register a new user with phone number and password
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body dto.RegisterRequest true "Register Request"
+// @Success 201 {object} map[string]string
+// @Failure 400 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /auth/register [post]
 func (h *AuthHTTPHandler) RegisterHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	if ctx.Err() != nil {
@@ -100,6 +111,18 @@ func (h *AuthHTTPHandler) RegisterHandler(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"message": "User registered successfully"})
 }
 
+// LoginHandler godoc
+// @Summary Login user
+// @Description Login user with phone number and password
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body dto.LoginRequest true "Login Request"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /auth/login [post]
 func (h *AuthHTTPHandler) LoginHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	if ctx.Err() != nil {
@@ -144,6 +167,17 @@ func (h *AuthHTTPHandler) LoginHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"tokens": tokens})
 }
 
+// LogoutHandler godoc
+// @Summary Logout user
+// @Description Logout user and invalidate tokens
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} map[string]string
+// @Failure 401 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /auth/logout [post]
 func (h *AuthHTTPHandler) LogoutHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	if ctx.Err() != nil {
@@ -195,6 +229,18 @@ func (h *AuthHTTPHandler) LogoutHandler(c *gin.Context) {
 	})
 }
 
+// RefreshTokenHandler godoc
+// @Summary Refresh access token
+// @Description Get new access token using refresh token
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body dto.RefreshTokenRequest true "Refresh Token Request"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /auth/refresh-token [post]
 func (h *AuthHTTPHandler) RefreshTokenHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	if ctx.Err() != nil {
