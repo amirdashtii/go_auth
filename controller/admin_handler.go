@@ -27,18 +27,18 @@ type AdminHTTPHandler struct {
 func NewAdminHTTPHandler() *AdminHTTPHandler {
 	svc := service.NewAdminService()
 
-	// Create log file
-	logFile, err := os.OpenFile("logs/app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		panic(err)
-	}
+	// // Create log file // REMOVE THIS BLOCK
+	// logFile, err := os.OpenFile("logs/app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
 	// Initialize logger with both file and console output
 	loggerConfig := ports.LoggerConfig{
 		Level:       "info",
-		Environment: "development",
+		Environment: "development", // Should ideally come from config
 		ServiceName: "go_auth",
-		Output:      logFile,
+		Output:      os.Stdout,   // Log to Stdout
 	}
 
 	appLogger := logger.NewZerologLogger(loggerConfig)

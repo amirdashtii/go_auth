@@ -26,18 +26,12 @@ func NewUserService() *UserService {
 	}
 	db := dbRepo.DB()
 
-	// Create log file
-	logfile, err := os.OpenFile("logs/app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		panic(err)
-	}
-
 	// Initialize logger with both file and console output
 	loggerConfig := ports.LoggerConfig{
 		Level:       "info",
 		Environment: "development",
 		ServiceName: "go_auth",
-		Output:      logfile,
+		Output:      os.Stdout,
 	}
 	appLogger := logger.NewZerologLogger(loggerConfig)
 

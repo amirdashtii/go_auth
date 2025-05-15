@@ -2,11 +2,12 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"github.com/amirdashtii/go_auth/config"
 	"github.com/amirdashtii/go_auth/controller"
 	"github.com/amirdashtii/go_auth/controller/middleware"
-	_ "github.com/amirdashtii/go_auth/docs" 
+	_ "github.com/amirdashtii/go_auth/docs"
 	"github.com/amirdashtii/go_auth/infrastructure/logger"
 	"github.com/amirdashtii/go_auth/internal/core/ports"
 	"github.com/gin-gonic/gin"
@@ -44,11 +45,9 @@ func main() {
 		Level:       "info",
 		Environment: config.Environment,
 		ServiceName: "go_auth",
+		Output:      os.Stdout,
 	}
-	appLogger, err := logger.NewFileLogger(loggerConfig)
-	if err != nil {
-		log.Fatalf("Error initializing logger: %v", err)
-	}
+	appLogger := logger.NewZerologLogger(loggerConfig)
 
 	// Initialize router
 	r := gin.New() // Use gin.New() instead of gin.Default() to have more control

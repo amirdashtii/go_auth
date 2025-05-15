@@ -24,18 +24,12 @@ type AuthHTTPHandler struct {
 func NewAuthHTTPHandler() *AuthHTTPHandler {
 	svc := service.NewAuthService()
 
-	// Create log file
-	logFile, err := os.OpenFile("logs/app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		panic(err)
-	}
-
 	// Initialize logger with both file and console output
 	loggerConfig := ports.LoggerConfig{
 		Level:       "info",
 		Environment: "development",
 		ServiceName: "go_auth",
-		Output:      logFile,
+		Output:      os.Stdout,
 	}
 
 	appLogger := logger.NewZerologLogger(loggerConfig)
