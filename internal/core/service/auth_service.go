@@ -93,10 +93,6 @@ func (s *AuthService) Register(ctx context.Context, req *dto.RegisterRequest) er
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
-	
-	if ctx.Err() != nil {
-		return ctx.Err()
-	}
 
 	if err := s.db.Create(ctx, user); err != nil {
 		return errors.ErrCreateUser

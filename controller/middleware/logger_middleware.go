@@ -41,6 +41,9 @@ func (w *responseWriter) WriteString(s string) (int, error) {
 // LoggerMiddleware creates a new logger middleware
 func LoggerMiddleware(logger ports.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context() // Get the context
+		l := logger.WithContext(ctx) // Create a new logger with the context
+
 		start := time.Now()
 		path := c.Request.URL.Path
 		raw := c.Request.URL.RawQuery
@@ -68,7 +71,7 @@ func LoggerMiddleware(logger ports.Logger) gin.HandlerFunc {
 			requestFields = append(requestFields, ports.F("request_body", string(maskedBody)))
 		}
 
-		logger.Info("Incoming Request", requestFields...)
+		l.Info("Incoming Request", requestFields...) // Use l instead of logger
 
 		// Create custom response writer
 		responseBody := &bytes.Buffer{}
@@ -104,11 +107,11 @@ func LoggerMiddleware(logger ports.Logger) gin.HandlerFunc {
 		// Log response based on status code
 		switch {
 		case statusCode >= 500:
-			logger.Error("Server Response", responseFields...)
+			l.Error("Server Response", responseFields...) // Use l instead of logger
 		case statusCode >= 400:
-			logger.Warn("Client Response", responseFields...)
+			l.Warn("Client Response", responseFields...) // Use l instead of logger
 		default:
-			logger.Info("Server Response", responseFields...)
+			l.Info("Server Response", responseFields...) // Use l instead of logger
 		}
 	}
 }

@@ -4,7 +4,8 @@ import (
 	"context"
 	"net/http"
 	"os"
-	"time"
+
+	// "time" // This line should be removed or commented out
 
 	"github.com/amirdashtii/go_auth/controller/dto"
 	"github.com/amirdashtii/go_auth/controller/middleware"
@@ -74,7 +75,9 @@ func NewAdminRoutes(r *gin.Engine) {
 // @Failure 500 {object} map[string]interface{}
 // @Router /users [get]
 func (h *AdminHTTPHandler) GetUsersHandler(c *gin.Context) {
-	ctx := c.Request.Context()
+	ctx, cancel := context.WithCancel(c.Request.Context())
+	defer cancel()
+
 	if ctx.Err() != nil {
 		h.logger.Error("Context cancelled while handling get users request",
 			ports.F("error", ctx.Err()),
@@ -151,7 +154,7 @@ func (h *AdminHTTPHandler) GetUsersHandler(c *gin.Context) {
 // @Failure 500 {object} map[string]interface{}
 // @Router /users/{id} [get]
 func (h *AdminHTTPHandler) GetUserByIDHandler(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	ctx, cancel := context.WithCancel(c.Request.Context())
 	defer cancel()
 
 	role, exists := c.Get("role")
@@ -217,7 +220,7 @@ func (h *AdminHTTPHandler) GetUserByIDHandler(c *gin.Context) {
 // @Failure 500 {object} map[string]interface{}
 // @Router /users/{id} [put]
 func (h *AdminHTTPHandler) UpdateUserHandler(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	ctx, cancel := context.WithCancel(c.Request.Context())
 	defer cancel()
 
 	role, exists := c.Get("role")
@@ -302,7 +305,9 @@ func (h *AdminHTTPHandler) UpdateUserHandler(c *gin.Context) {
 // @Failure 500 {object} map[string]interface{}
 // @Router /users/{id}/role [put]
 func (h *AdminHTTPHandler) ChangeUserRoleHandler(c *gin.Context) {
-	ctx := c.Request.Context()
+	ctx, cancel := context.WithCancel(c.Request.Context())
+	defer cancel()
+
 	if ctx.Err() != nil {
 		h.logger.Error("Context cancelled while handling change user role request",
 			ports.F("error", ctx.Err()),
@@ -397,7 +402,9 @@ func (h *AdminHTTPHandler) ChangeUserRoleHandler(c *gin.Context) {
 // @Failure 500 {object} map[string]interface{}
 // @Router /users/{id}/status [put]
 func (h *AdminHTTPHandler) ChangeUserStatusHandler(c *gin.Context) {
-	ctx := c.Request.Context()
+	ctx, cancel := context.WithCancel(c.Request.Context())
+	defer cancel()
+
 	if ctx.Err() != nil {
 		h.logger.Error("Context cancelled while handling change user status request",
 			ports.F("error", ctx.Err()),
@@ -490,7 +497,9 @@ func (h *AdminHTTPHandler) ChangeUserStatusHandler(c *gin.Context) {
 // @Failure 500 {object} map[string]interface{}
 // @Router /users/{id} [delete]
 func (h *AdminHTTPHandler) DeleteUserHandler(c *gin.Context) {
-	ctx := c.Request.Context()
+	ctx, cancel := context.WithCancel(c.Request.Context())
+	defer cancel()
+
 	if ctx.Err() != nil {
 		h.logger.Error("Context cancelled while handling delete user request",
 			ports.F("error", ctx.Err()),

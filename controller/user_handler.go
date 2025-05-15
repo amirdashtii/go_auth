@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/amirdashtii/go_auth/controller/dto"
 	"github.com/amirdashtii/go_auth/controller/middleware"
@@ -71,7 +70,9 @@ func NewUserRoutes(r *gin.Engine) {
 // @Failure 500 {object} map[string]interface{}
 // @Router /users/me [get]
 func (h *UserHTTPHandler) GetUserProfileHandler(c *gin.Context) {
-	ctx := c.Request.Context()
+	ctx, cancel := context.WithCancel(c.Request.Context())
+	defer cancel()
+
 	if ctx.Err() != nil {
 		h.logger.Error("Context cancelled while handling get profile request",
 			ports.F("error", ctx.Err()),
@@ -137,7 +138,9 @@ func (h *UserHTTPHandler) GetUserProfileHandler(c *gin.Context) {
 // @Failure 500 {object} map[string]interface{}
 // @Router /users/me [put]
 func (h *UserHTTPHandler) UpdateUserProfileHandler(c *gin.Context) {
-	ctx := c.Request.Context()
+	ctx, cancel := context.WithCancel(c.Request.Context())
+	defer cancel()
+
 	if ctx.Err() != nil {
 		h.logger.Error("Context cancelled while handling update profile request",
 			ports.F("error", ctx.Err()),
@@ -218,7 +221,9 @@ func (h *UserHTTPHandler) UpdateUserProfileHandler(c *gin.Context) {
 // @Failure 500 {object} map[string]interface{}
 // @Router /users/me/change-password [put]
 func (h *UserHTTPHandler) ChangePasswordHandler(c *gin.Context) {
-	ctx := c.Request.Context()
+	ctx, cancel := context.WithCancel(c.Request.Context())
+	defer cancel()
+
 	if ctx.Err() != nil {
 		h.logger.Error("Context cancelled while handling change password request",
 			ports.F("error", ctx.Err()),
@@ -296,7 +301,7 @@ func (h *UserHTTPHandler) ChangePasswordHandler(c *gin.Context) {
 // @Failure 500 {object} map[string]interface{}
 // @Router /users/me [delete]
 func (h *UserHTTPHandler) DeleteUserProfileHandler(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	ctx, cancel := context.WithCancel(c.Request.Context())
 	defer cancel()
 
 	userID, exists := c.Get("user_id")

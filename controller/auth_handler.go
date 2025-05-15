@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"net/http"
 	"os"
 
@@ -67,7 +68,9 @@ func NewAuthRoutes(r *gin.Engine) {
 // @Failure 500 {object} map[string]interface{}
 // @Router /auth/register [post]
 func (h *AuthHTTPHandler) RegisterHandler(c *gin.Context) {
-	ctx := c.Request.Context()
+	ctx, cancel := context.WithCancel(c.Request.Context())
+	defer cancel()
+
 	if ctx.Err() != nil {
 		h.logger.Error("Context cancelled while handling register request",
 			ports.F("error", ctx.Err()),
@@ -124,7 +127,9 @@ func (h *AuthHTTPHandler) RegisterHandler(c *gin.Context) {
 // @Failure 500 {object} map[string]interface{}
 // @Router /auth/login [post]
 func (h *AuthHTTPHandler) LoginHandler(c *gin.Context) {
-	ctx := c.Request.Context()
+	ctx, cancel := context.WithCancel(c.Request.Context())
+	defer cancel()
+
 	if ctx.Err() != nil {
 		h.logger.Error("Context cancelled while handling login request",
 			ports.F("error", ctx.Err()),
@@ -179,7 +184,9 @@ func (h *AuthHTTPHandler) LoginHandler(c *gin.Context) {
 // @Failure 500 {object} map[string]interface{}
 // @Router /auth/logout [post]
 func (h *AuthHTTPHandler) LogoutHandler(c *gin.Context) {
-	ctx := c.Request.Context()
+	ctx, cancel := context.WithCancel(c.Request.Context())
+	defer cancel()
+
 	if ctx.Err() != nil {
 		h.logger.Error("Context cancelled while handling logout request",
 			ports.F("error", ctx.Err()),
@@ -242,7 +249,9 @@ func (h *AuthHTTPHandler) LogoutHandler(c *gin.Context) {
 // @Failure 500 {object} map[string]interface{}
 // @Router /auth/refresh-token [post]
 func (h *AuthHTTPHandler) RefreshTokenHandler(c *gin.Context) {
-	ctx := c.Request.Context()
+	ctx, cancel := context.WithCancel(c.Request.Context())
+	defer cancel()
+
 	if ctx.Err() != nil {
 		h.logger.Error("Context cancelled while handling refresh token request",
 			ports.F("error", ctx.Err()),
