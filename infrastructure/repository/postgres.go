@@ -19,18 +19,13 @@ type PGRepository struct {
 }
 
 func runMigrations(config *config.Config) {
-	logfile, err := os.OpenFile("logs/app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		panic(err)
-	}
 	loggerConfig := ports.LoggerConfig{
 		Level: "info",
 		Environment: "development",
 		ServiceName: "go_auth",
-		Output: logfile,
+		Output: os.Stdout,
 	}
 	logger := logger.NewZerologLogger(loggerConfig)
-
 
 	m, err := migrate.New(
 		"file://migrations",
@@ -50,18 +45,13 @@ func runMigrations(config *config.Config) {
 }
 
 func NewPGRepository() (*PGRepository, error) {
-	logfile, err := os.OpenFile("logs/app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		panic(err)
-	}
 	loggerConfig := ports.LoggerConfig{
 		Level: "info",
 		Environment: "development",
 		ServiceName: "go_auth",
-		Output: logfile,
+		Output: os.Stdout,
 	}
 	logger := logger.NewZerologLogger(loggerConfig)
-	
 
 	config, err := config.LoadConfig()
 	if err != nil {

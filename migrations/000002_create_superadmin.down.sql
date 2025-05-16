@@ -1,0 +1,1 @@
+DELETE FROM users WHERE phone_number = '09000000000'; 
