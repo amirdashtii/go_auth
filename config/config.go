@@ -39,11 +39,11 @@ func LoadConfig() (*Config, error) {
 	v.SetDefault("db.password", "go_auth")
 	v.SetDefault("db.name", "go_auth")
 	v.SetDefault("jwt.secret", "h13dpx8nFiWwLbhHuOEBLWhA6kfYwoP9UNU5MQlgoZQ0")
-	v.SetDefault("redis.Addr", "localhost:6379")
-	v.SetDefault("redis.Password", "")
-	v.SetDefault("redis.DB", 0)
+	v.SetDefault("redis.addr", "localhost:6379")
+	v.SetDefault("redis.password", "")
+	v.SetDefault("redis.db", 0)
 
-	// Read from YAML file
+	// Read from YAML file first (lower priority)
 	v.SetConfigName("development")
 	v.SetConfigType("yaml")
 	v.AddConfigPath("./config")
@@ -53,7 +53,7 @@ func LoadConfig() (*Config, error) {
 		}
 	}
 
-	// Read from .env file
+	// Read from .env file (higher priority)
 	v.SetConfigName(".env")
 	v.SetConfigType("env")
 	v.AddConfigPath("./config")
@@ -61,16 +61,6 @@ func LoadConfig() (*Config, error) {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			return nil, errors.ErrLoadConfig
 		}
-	} else {
-		v.AutomaticEnv()
-		v.Set("environment", v.GetString("ENVIRONMENT"))
-		v.Set("server.port", v.GetString("SERVER_PORT"))
-		v.Set("db.host", v.GetString("DB_HOST"))
-		v.Set("db.port", v.GetString("DB_PORT"))
-		v.Set("db.user", v.GetString("DB_USER"))
-		v.Set("db.password", v.GetString("DB_PASSWORD"))
-		v.Set("db.name", v.GetString("DB_NAME"))
-		v.Set("jwt.secret", v.GetString("JWT_SECRET"))
 	}
 
 	var config Config
