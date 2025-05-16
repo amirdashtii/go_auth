@@ -9,56 +9,30 @@ import (
 	"github.com/amirdashtii/go_auth/infrastructure/logger"
 	"github.com/amirdashtii/go_auth/internal/core/errors"
 	"github.com/amirdashtii/go_auth/internal/core/ports"
-	"github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
+	_ "github.com/lib/pq" // PostgreSQL driver
 )
 
 type PGRepository struct {
-	db *sql.DB
-}
-
-func runMigrations(config *config.Config) {
-	loggerConfig := ports.LoggerConfig{
-		Level: "info",
-		Environment: "development",
-		ServiceName: "go_auth",
-		Output: os.Stdout,
-	}
-	logger := logger.NewZerologLogger(loggerConfig)
-
-	m, err := migrate.New(
-		"file://migrations",
-		"postgres://"+config.DB.User+":"+config.DB.Password+"@"+config.DB.Host+":"+config.DB.Port+"/"+config.DB.Name+"?sslmode=disable",
-	)
-	if err != nil {
-		logger.Fatal("Failed to create migrate instance", 
-			ports.F("error", err),
-		)
-	}
-
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		logger.Fatal("Failed to run migrations", 
-			ports.F("error", err),
-		)
-	}
+	db     *sql.DB
+	logger ports.Logger
 }
 
 func NewPGRepository() (*PGRepository, error) {
 	loggerConfig := ports.LoggerConfig{
-		Level: "info",
+		Level:       "info",
 		Environment: "development",
 		ServiceName: "go_auth",
-		Output: os.Stdout,
+		Output:      os.Stdout,
 	}
 	logger := logger.NewZerologLogger(loggerConfig)
 
 	config, err := config.LoadConfig()
 	if err != nil {
-		return nil, err
+		logger.Error("Failed to load config",
+			ports.F("error", err),
+		)
+		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
-
-	runMigrations(config)
 
 	host := config.DB.Host
 	user := config.DB.User
@@ -66,25 +40,39 @@ func NewPGRepository() (*PGRepository, error) {
 	dbName := config.DB.Name
 	port := config.DB.Port
 
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable", host, user, password, dbName, port)
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
+		host, user, password, dbName, port)
+	
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
-		logger.Error("Failed to open database", 
+		logger.Error("Failed to open database connection",
 			ports.F("error", err),
 		)
 		return nil, errors.ErrDatabaseInit
 	}
 
 	if err := db.Ping(); err != nil {
-		logger.Error("Failed to ping database", 
+		logger.Error("Failed to ping database",
 			ports.F("error", err),
 		)
 		return nil, errors.ErrDatabaseInit
 	}
 
-	return &PGRepository{db: db}, nil
+	return &PGRepository{
+		db:     db,
+		logger: logger,
+	}, nil
 }
 
+// DB returns the underlying database connection
 func (r *PGRepository) DB() *sql.DB {
 	return r.db
+}
+
+// Close closes the database connection
+func (r *PGRepository) Close() error {
+	if r.db != nil {
+		return r.db.Close()
+	}
+	return nil
 }
