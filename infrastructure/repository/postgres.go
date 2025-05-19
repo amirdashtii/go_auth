@@ -19,19 +19,19 @@ type PGRepository struct {
 }
 
 var (
-	once          sync.Once
+	pgOnce          sync.Once
 	pgRepository  *PGRepository
 )
 
 func GetPGRepository(config *config.Config) (*PGRepository, error) {
 	var err error
-	once.Do(func() {
-		pgRepository, err = NewPGRepository(config)
+	pgOnce.Do(func() {
+		pgRepository, err = newPGRepository(config)
 	})
 	return pgRepository, err
 }
 
-func NewPGRepository(config *config.Config) (*PGRepository, error) {
+func newPGRepository(config *config.Config) (*PGRepository, error) {
 	loggerConfig := ports.LoggerConfig{
 		Level:       "info",
 		Environment: config.Environment,

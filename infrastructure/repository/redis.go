@@ -13,7 +13,20 @@ type RedisRepository struct {
 	logger ports.Logger
 }
 
-func NewRedisRepository(logger ports.Logger) (*RedisRepository, error) {
+var (
+	redisRepo *RedisRepository
+	redisOnce sync.Once
+)
+
+func GetRedisRepository(logger ports.Logger) (*RedisRepository, error) {
+	var err error
+	redisOnce.Do(func() {
+		redisRepo, err = newRedisRepository(logger)
+	})
+	return redisRepo, err
+}
+
+func newRedisRepository(logger ports.Logger) (*RedisRepository, error) {
 	config, err := config.LoadConfig()
 	if err != nil {
 		return nil, err

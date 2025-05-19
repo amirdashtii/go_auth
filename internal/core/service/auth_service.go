@@ -45,7 +45,7 @@ func NewAuthService(config *config.Config) *AuthService {
 	appLogger := logger.NewZerologLogger(loggerConfig)
 
 	authRepo := repository.NewPGAuthRepository(db, appLogger)
-	redisRepo, err := repository.NewRedisRepository(appLogger)
+	redisRepo, err := repository.GetRedisRepository(appLogger)
 	if err != nil {
 		panic(errors.ErrRedisInit)
 	}
