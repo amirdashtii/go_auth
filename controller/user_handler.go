@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/amirdashtii/go_auth/config"
 	"github.com/amirdashtii/go_auth/controller/dto"
 	"github.com/amirdashtii/go_auth/controller/middleware"
 	"github.com/amirdashtii/go_auth/controller/validators"
@@ -22,8 +23,8 @@ type UserHTTPHandler struct {
 	logger ports.Logger
 }
 
-func NewUserHTTPHandler() *UserHTTPHandler {
-	svc := service.NewUserService()
+func NewUserHTTPHandler(config *config.Config) *UserHTTPHandler {
+	svc := service.NewUserService(config)
 
 	// Initialize logger with both file and console output
 	loggerConfig := ports.LoggerConfig{
@@ -41,11 +42,11 @@ func NewUserHTTPHandler() *UserHTTPHandler {
 	}
 }
 
-func NewUserRoutes(r *gin.Engine) {
-	h := NewUserHTTPHandler()
+func NewUserRoutes(r *gin.Engine, config *config.Config) {
+	h := NewUserHTTPHandler(config)
 
 	userGroup := r.Group("/users")
-	userGroup.Use(middleware.AuthMiddleware())
+	userGroup.Use(middleware.AuthMiddleware(config))
 	userGroup.GET("/me", h.GetUserProfileHandler)
 	userGroup.PUT("/me", h.UpdateUserProfileHandler)
 	userGroup.PUT("/me/change-password", h.ChangePasswordHandler)

@@ -28,8 +28,8 @@ type AuthService struct {
 	logger ports.Logger
 }
 
-func NewAuthService() *AuthService {
-	dbRepo, err := repository.NewPGRepository()
+func NewAuthService(config *config.Config) *AuthService {
+	dbRepo, err := repository.GetPGRepository(config)
 	if err != nil {
 		panic(errors.ErrDatabaseInit)
 	}

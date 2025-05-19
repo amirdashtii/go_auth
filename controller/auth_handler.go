@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/amirdashtii/go_auth/config"
 	"github.com/amirdashtii/go_auth/controller/dto"
 	"github.com/amirdashtii/go_auth/controller/middleware"
 	"github.com/amirdashtii/go_auth/infrastructure/logger"
@@ -21,8 +22,8 @@ type AuthHTTPHandler struct {
 	logger ports.Logger
 }
 
-func NewAuthHTTPHandler() *AuthHTTPHandler {
-	svc := service.NewAuthService()
+func NewAuthHTTPHandler(config *config.Config) *AuthHTTPHandler {
+	svc := service.NewAuthService(config)
 
 	// Initialize logger with both file and console output
 	loggerConfig := ports.LoggerConfig{
@@ -40,13 +41,13 @@ func NewAuthHTTPHandler() *AuthHTTPHandler {
 	}
 }
 
-func NewAuthRoutes(r *gin.Engine) {
-	h := NewAuthHTTPHandler()
+func NewAuthRoutes(r *gin.Engine, config *config.Config) {
+	h := NewAuthHTTPHandler(config)
 
 	authGroup := r.Group("/auth")
 	authGroup.POST("/register", h.RegisterHandler)
 	authGroup.POST("/login", h.LoginHandler)
-	authGroup.POST("/logout", middleware.AuthMiddleware(), h.LogoutHandler)
+	authGroup.POST("/logout", middleware.AuthMiddleware(config), h.LogoutHandler)
 	authGroup.POST("/refresh-token", h.RefreshTokenHandler)
 }
 

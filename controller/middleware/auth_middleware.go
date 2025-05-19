@@ -11,8 +11,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func AuthMiddleware() gin.HandlerFunc {
-	authService := service.NewAuthService()
+func AuthMiddleware(config *config.Config) gin.HandlerFunc {
+	authService := service.NewAuthService(config)
 
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
@@ -35,15 +35,6 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		if len(token) > 7 && token[0:7] == "Bearer " {
 			token = token[7:]
-		}
-
-		config, err := config.LoadConfig()
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": errors.ErrLoadConfig,
-			})
-			c.Abort()
-			return
 		}
 
 		jwtSecret := config.JWT.Secret

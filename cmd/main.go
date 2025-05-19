@@ -58,9 +58,9 @@ func main() {
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Setup routes
-	controller.NewAuthRoutes(r)
-	controller.NewUserRoutes(r)
-	controller.NewAdminRoutes(r)
+	controller.NewAuthRoutes(r, config)
+	controller.NewUserRoutes(r, config)
+	controller.NewAdminRoutes(r, config)
 
 	appLogger.Info("Server is starting", ports.F("port", config.Server.Port))
 	appLogger.Info("Server URL", ports.F("url", "http://localhost:"+config.Server.Port))

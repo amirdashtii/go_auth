@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/amirdashtii/go_auth/config"
 	"github.com/amirdashtii/go_auth/infrastructure/logger"
@@ -17,22 +18,27 @@ type PGRepository struct {
 	logger ports.Logger
 }
 
-func NewPGRepository() (*PGRepository, error) {
+var (
+	once          sync.Once
+	pgRepository  *PGRepository
+)
+
+func GetPGRepository(config *config.Config) (*PGRepository, error) {
+	var err error
+	once.Do(func() {
+		pgRepository, err = NewPGRepository(config)
+	})
+	return pgRepository, err
+}
+
+func NewPGRepository(config *config.Config) (*PGRepository, error) {
 	loggerConfig := ports.LoggerConfig{
 		Level:       "info",
-		Environment: "development",
+		Environment: config.Environment,
 		ServiceName: "go_auth",
 		Output:      os.Stdout,
 	}
 	logger := logger.NewZerologLogger(loggerConfig)
-
-	config, err := config.LoadConfig()
-	if err != nil {
-		logger.Error("Failed to load config",
-			ports.F("error", err),
-		)
-		return nil, fmt.Errorf("failed to load config: %w", err)
-	}
 
 	host := config.DB.Host
 	user := config.DB.User
