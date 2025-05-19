@@ -20,7 +20,7 @@ type UserService struct {
 }
 
 func NewUserService() *UserService {
-	dbRepo, err := repository.NewPGRepository()
+	dbRepo, err := repository.GetPGRepository()
 	if err != nil {
 		panic(errors.ErrDatabaseInit)
 	}

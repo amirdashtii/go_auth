@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/amirdashtii/go_auth/config"
@@ -12,6 +13,11 @@ import (
 )
 
 func AuthMiddleware() gin.HandlerFunc {
+	config, err := config.LoadConfig()
+	if err != nil {
+		log.Fatalf("Error loading config: %v", err)
+	}
+	
 	authService := service.NewAuthService()
 
 	return func(c *gin.Context) {
@@ -35,15 +41,6 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		if len(token) > 7 && token[0:7] == "Bearer " {
 			token = token[7:]
-		}
-
-		config, err := config.LoadConfig()
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": errors.ErrLoadConfig,
-			})
-			c.Abort()
-			return
 		}
 
 		jwtSecret := config.JWT.Secret

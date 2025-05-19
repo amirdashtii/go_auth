@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"sync"
 
 	"github.com/amirdashtii/go_auth/config"
 	"github.com/amirdashtii/go_auth/internal/core/ports"
@@ -11,9 +12,23 @@ import (
 type RedisRepository struct {
 	client *redis.Client
 	logger ports.Logger
+	config *config.Config
 }
 
-func NewRedisRepository(logger ports.Logger) (*RedisRepository, error) {
+var (
+	redisRepo *RedisRepository
+	redisOnce sync.Once
+)
+
+func GetRedisRepository(logger ports.Logger) (*RedisRepository, error) {
+	var err error
+	redisOnce.Do(func() {
+		redisRepo, err = newRedisRepository(logger)
+	})
+	return redisRepo, err
+}
+
+func newRedisRepository(logger ports.Logger) (*RedisRepository, error) {
 	config, err := config.LoadConfig()
 	if err != nil {
 		return nil, err
@@ -29,5 +44,9 @@ func NewRedisRepository(logger ports.Logger) (*RedisRepository, error) {
 		return nil, err
 	}
 
-	return &RedisRepository{client: client, logger: logger}, nil
+	return &RedisRepository{
+		client: client,
+		logger: logger,
+		config: config,
+	}, nil
 }

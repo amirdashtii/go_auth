@@ -20,7 +20,7 @@ type AdminService struct {
 }
 
 func NewAdminService() *AdminService {
-	dbRepo, err := repository.NewPGRepository()
+	dbRepo, err := repository.GetPGRepository()
 	if err != nil {
 		panic(errors.ErrDatabaseInit)
 	}
@@ -42,7 +42,8 @@ func NewAdminService() *AdminService {
 	}
 }
 
-func (s *AdminService) GetUsers(ctx context.Context, status *entities.StatusType, role *entities.RoleType, sort, order *string) ([]dto.AdminUserResponse, error) {	if ctx.Err() != nil {
+func (s *AdminService) GetUsers(ctx context.Context, status *entities.StatusType, role *entities.RoleType, sort, order *string) ([]dto.AdminUserResponse, error) {
+	if ctx.Err() != nil {
 		s.logger.Error("Context cancelled while getting users",
 			ports.F("error", ctx.Err()),
 			ports.F("status", status),
