@@ -5,7 +5,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/amirdashtii/go_auth/config"
 	"github.com/amirdashtii/go_auth/controller/dto"
 	"github.com/amirdashtii/go_auth/infrastructure/logger"
 	"github.com/amirdashtii/go_auth/infrastructure/repository"
@@ -20,8 +19,8 @@ type AdminService struct {
 	logger ports.Logger
 }
 
-func NewAdminService(config *config.Config) *AdminService {
-	dbRepo, err := repository.GetPGRepository(config)
+func NewAdminService() *AdminService {
+	dbRepo, err := repository.GetPGRepository()
 	if err != nil {
 		panic(errors.ErrDatabaseInit)
 	}

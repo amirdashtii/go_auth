@@ -23,17 +23,23 @@ const (
 )
 
 type AuthService struct {
-	db     ports.AuthRepository
-	redis  ports.InMemoryRespositoryContracts
-	logger ports.Logger
+	db        ports.AuthRepository
+	redis     ports.InMemoryRespositoryContracts
+	logger    ports.Logger
+	jwtSecret string
 }
 
-func NewAuthService(config *config.Config) *AuthService {
-	dbRepo, err := repository.GetPGRepository(config)
+func NewAuthService() *AuthService {
+	dbRepo, err := repository.GetPGRepository()
 	if err != nil {
 		panic(errors.ErrDatabaseInit)
 	}
 	db := dbRepo.DB()
+
+	config, err := config.LoadConfig()
+	if err != nil {
+		panic(errors.ErrLoadConfig)
+	}
 
 	// Initialize logger with both file and console output
 	loggerConfig := ports.LoggerConfig{
@@ -51,9 +57,10 @@ func NewAuthService(config *config.Config) *AuthService {
 	}
 
 	return &AuthService{
-		db:     authRepo,
-		redis:  redisRepo,
-		logger: appLogger,
+		db:        authRepo,
+		redis:     redisRepo,
+		logger:    appLogger,
+		jwtSecret: config.JWT.Secret,
 	}
 }
 
@@ -89,7 +96,7 @@ func (s *AuthService) Register(ctx context.Context, req *dto.RegisterRequest) er
 	}
 
 	if err := s.db.Create(ctx, user); err != nil {
-		return errors.ErrCreateUser
+		return err
 	}
 
 	return nil
@@ -121,6 +128,7 @@ func (s *AuthService) Login(ctx context.Context, loginReq *dto.LoginRequest) (*e
 	// Check user status
 	if user.Status == entities.Deleted {
 		s.logger.Error("User is deleted",
+			ports.F("error", err),
 			ports.F("user_id", user.ID),
 		)
 		return nil, errors.ErrInvalidCredentials
@@ -275,17 +283,7 @@ func (s *AuthService) createToken(ctx context.Context, user *entities.User, expi
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	config, err := config.LoadConfig()
-	if err != nil {
-		return "", err
-	}
-
-	if ctx.Err() != nil {
-		return "", ctx.Err()
-	}
-
-	jwtSecret := config.JWT.Secret
-	tokenString, err := token.SignedString([]byte(jwtSecret))
+	tokenString, err := token.SignedString([]byte(s.jwtSecret))
 	if err != nil {
 		s.logger.Error("Error creating token",
 			ports.F("error", err),
@@ -302,19 +300,8 @@ func (s *AuthService) parseAndValidateToken(ctx context.Context, token string, e
 		return nil, ctx.Err()
 	}
 
-	config, err := config.LoadConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	if ctx.Err() != nil {
-		return nil, ctx.Err()
-	}
-
-	jwtSecret := config.JWT.Secret
-
 	parsedToken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
-		return []byte(jwtSecret), nil
+		return []byte(s.jwtSecret), nil
 	})
 	if err != nil {
 		s.logger.Error("Error parsing token",
@@ -322,10 +309,6 @@ func (s *AuthService) parseAndValidateToken(ctx context.Context, token string, e
 			ports.F("token", token),
 		)
 		return nil, errors.ErrInvalidToken
-	}
-
-	if ctx.Err() != nil {
-		return nil, ctx.Err()
 	}
 
 	claims, ok := parsedToken.Claims.(jwt.MapClaims)

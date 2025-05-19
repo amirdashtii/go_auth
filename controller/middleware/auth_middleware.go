@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/amirdashtii/go_auth/config"
@@ -11,8 +12,13 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func AuthMiddleware(config *config.Config) gin.HandlerFunc {
-	authService := service.NewAuthService(config)
+func AuthMiddleware() gin.HandlerFunc {
+	config, err := config.LoadConfig()
+	if err != nil {
+		log.Fatalf("Error loading config: %v", err)
+	}
+	
+	authService := service.NewAuthService()
 
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()

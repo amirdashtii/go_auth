@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 
-	"github.com/amirdashtii/go_auth/config"
 	"github.com/amirdashtii/go_auth/controller/dto"
 	"github.com/amirdashtii/go_auth/infrastructure/logger"
 	"github.com/amirdashtii/go_auth/infrastructure/repository"
@@ -20,8 +19,8 @@ type UserService struct {
 	logger ports.Logger
 }
 
-func NewUserService(config *config.Config) *UserService {
-	dbRepo, err := repository.GetPGRepository(config)
+func NewUserService() *UserService {
+	dbRepo, err := repository.GetPGRepository()
 	if err != nil {
 		panic(errors.ErrDatabaseInit)
 	}

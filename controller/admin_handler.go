@@ -7,7 +7,6 @@ import (
 
 	// "time" // This line should be removed or commented out
 
-	"github.com/amirdashtii/go_auth/config"
 	"github.com/amirdashtii/go_auth/controller/dto"
 	"github.com/amirdashtii/go_auth/controller/middleware"
 	"github.com/amirdashtii/go_auth/controller/validators"
@@ -25,14 +24,8 @@ type AdminHTTPHandler struct {
 	logger ports.Logger
 }
 
-func NewAdminHTTPHandler(config *config.Config) *AdminHTTPHandler {
-	svc := service.NewAdminService(config)
-
-	// // Create log file // REMOVE THIS BLOCK
-	// logFile, err := os.OpenFile("logs/app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	// if err != nil {
-	// 	panic(err)
-	// }
+func NewAdminHTTPHandler() *AdminHTTPHandler {
+	svc := service.NewAdminService()
 
 	// Initialize logger with both file and console output
 	loggerConfig := ports.LoggerConfig{
@@ -49,11 +42,11 @@ func NewAdminHTTPHandler(config *config.Config) *AdminHTTPHandler {
 	}
 }
 
-func NewAdminRoutes(r *gin.Engine, config *config.Config) {
-	h := NewAdminHTTPHandler(config)
+func NewAdminRoutes(r *gin.Engine) {
+	h := NewAdminHTTPHandler()
 
 	usersGroup := r.Group("/users")
-	usersGroup.Use(middleware.AuthMiddleware(config))
+	usersGroup.Use(middleware.AuthMiddleware())
 
 	usersGroup.GET("", h.GetUsersHandler)
 	usersGroup.GET("/:id", h.GetUserByIDHandler)

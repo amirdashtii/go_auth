@@ -23,15 +23,19 @@ var (
 	pgRepository  *PGRepository
 )
 
-func GetPGRepository(config *config.Config) (*PGRepository, error) {
+func GetPGRepository() (*PGRepository, error) {
 	var err error
 	pgOnce.Do(func() {
-		pgRepository, err = newPGRepository(config)
+		pgRepository, err = newPGRepository()
 	})
 	return pgRepository, err
 }
 
-func newPGRepository(config *config.Config) (*PGRepository, error) {
+func newPGRepository() (*PGRepository, error) {
+	config, err := config.LoadConfig()
+	if err != nil {
+		return nil, errors.ErrLoadConfig
+	}
 	loggerConfig := ports.LoggerConfig{
 		Level:       "info",
 		Environment: config.Environment,
