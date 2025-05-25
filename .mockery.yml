@@ -1,14 +1,30 @@
 all: false
+dir: "{{.InterfaceDir}}"
+filename: "{{.InterfaceName}}_mock.go"
+force-file-write: true
+formatter: goimports
+log-level: info
+structname: "{{.Mock}}{{.InterfaceName}}"
+pkgname: mocks
+recursive: false
+require-template-schema-exists: true
+template: testify
+template-schema: "{{.Template}}.schema.json"
 packages:
   github.com/amirdashtii/go_auth/internal/core/ports:
     interfaces:
       AuthRepository:
         config:
           dir: internal/core/service/mocks
-          filename: AuthRepository.go
-          pkgname: mocks
+      UserRepository:
+        config:
+          dir: internal/core/service/mocks
+      AdminRepository:
+        config:
+          dir: internal/core/service/mocks
       InMemoryRespositoryContracts:
         config:
           dir: internal/core/service/mocks
-          filename: InMemoryRespositoryContracts.go
-          pkgname: mocks
+      Logger:
+        config:
+          dir: internal/core/service/mocks

@@ -54,7 +54,7 @@ deps:
 
 # Generate mocks
 mock:
-	mockery --all
+	mockery --config .mockery.yml
 
 # Database migrations
 migrate-up:
