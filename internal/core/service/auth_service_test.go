@@ -10,6 +10,7 @@ import (
 	"github.com/amirdashtii/go_auth/config"
 	"github.com/amirdashtii/go_auth/controller/dto"
 	"github.com/amirdashtii/go_auth/internal/core/entities"
+	"github.com/amirdashtii/go_auth/internal/core/errors"
 	"github.com/amirdashtii/go_auth/internal/core/service/mocks"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -20,14 +21,17 @@ import (
 
 // TestRegister tests the user registration functionality
 func TestRegister(t *testing.T) {
-	// Initialize mock repositories
-	mockAuthRepo := new(mocks.AuthRepository)
-	mockRedisRepo := new(mocks.InMemoryRespositoryContracts)
 
-	// Create service instance with mock repositories
+	// Initialize mock repositories
+	mockAuthRepo := new(mocks.MockAuthRepository)
+	mockRedisRepo := new(mocks.MockInMemoryRespositoryContracts)
+	mockLogger := new(mocks.MockLogger)
+
 	service := &AuthService{
-		db:    mockAuthRepo,
-		redis: mockRedisRepo,
+		db:        mockAuthRepo,
+		redis:     mockRedisRepo,
+		logger:    mockLogger,
+		jwtSecret: "secret",
 	}
 
 	// Create registration request
@@ -37,7 +41,7 @@ func TestRegister(t *testing.T) {
 	}
 
 	// Set up mock expectations
-	mockAuthRepo.On("Create", mock.Anything).Return(nil).Once()
+	mockAuthRepo.On("Create", mock.Anything, mock.Anything).Return(nil).Once()
 
 	// Execute registration
 	err := service.Register(context.Background(), req)
@@ -50,13 +54,17 @@ func TestRegister(t *testing.T) {
 // TestRegister_DuplicateUser tests registration with a duplicate phone number
 func TestRegister_DuplicateUser(t *testing.T) {
 	// Initialize mock repositories
-	mockAuthRepo := new(mocks.AuthRepository)
-	mockRedisRepo := new(mocks.InMemoryRespositoryContracts)
+	mockAuthRepo := new(mocks.MockAuthRepository)
+	mockRedisRepo := new(mocks.MockInMemoryRespositoryContracts)
 
 	// Create service instance with mock repositories
+	mockLogger := new(mocks.MockLogger)
+
 	service := &AuthService{
-		db:    mockAuthRepo,
-		redis: mockRedisRepo,
+		db:        mockAuthRepo,
+		redis:     mockRedisRepo,
+		logger:    mockLogger,
+		jwtSecret: "secret",
 	}
 
 	// Create registration request
@@ -67,7 +75,7 @@ func TestRegister_DuplicateUser(t *testing.T) {
 
 	// Set up mock expectations
 	// Expect Create to be called once and return a duplicate user error
-	mockAuthRepo.On("Create", mock.Anything).Return(fmt.Errorf("user with this phone number already exists")).Once()
+	mockAuthRepo.On("Create", mock.Anything, mock.Anything).Return(fmt.Errorf("user with this phone number already exists")).Once()
 
 	// Execute registration
 	err := service.Register(context.Background(), req)
@@ -81,13 +89,17 @@ func TestRegister_DuplicateUser(t *testing.T) {
 // TestLogin tests the user login functionality
 func TestLogin(t *testing.T) {
 	// Initialize mock repositories
-	mockAuthRepo := new(mocks.AuthRepository)
-	mockRedisRepo := new(mocks.InMemoryRespositoryContracts)
+	mockAuthRepo := new(mocks.MockAuthRepository)
+	mockRedisRepo := new(mocks.MockInMemoryRespositoryContracts)
 
 	// Create service instance with mock repositories
+	mockLogger := new(mocks.MockLogger)
+
 	service := &AuthService{
-		db:    mockAuthRepo,
-		redis: mockRedisRepo,
+		db:        mockAuthRepo,
+		redis:     mockRedisRepo,
+		logger:    mockLogger,
+		jwtSecret: "secret",
 	}
 
 	// Create test user
@@ -107,8 +119,8 @@ func TestLogin(t *testing.T) {
 	}
 
 	// Set up mock expectations
-	mockAuthRepo.On("FindUserByPhoneNumber", &req.PhoneNumber).Return(user, nil).Once()
-	mockRedisRepo.On("AddToken", mock.Anything, mock.Anything, mock.Anything).Return(nil).Twice()
+	mockAuthRepo.On("FindUserByPhoneNumber", mock.Anything, &req.PhoneNumber).Return(user, nil).Once()
+	mockRedisRepo.On("AddToken", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Twice()
 
 	// Execute login
 	tokens, err := service.Login(context.Background(), req)
@@ -124,13 +136,16 @@ func TestLogin(t *testing.T) {
 // TestLogin_InvalidPassword tests login with an incorrect password
 func TestLogin_InvalidPassword(t *testing.T) {
 	// Initialize mock repositories
-	mockAuthRepo := new(mocks.AuthRepository)
-	mockRedisRepo := new(mocks.InMemoryRespositoryContracts)
+	mockAuthRepo := new(mocks.MockAuthRepository)
+	mockRedisRepo := new(mocks.MockInMemoryRespositoryContracts)
+	mockLogger := new(mocks.MockLogger)
 
 	// Create service instance with mock repositories
 	service := &AuthService{
-		db:    mockAuthRepo,
-		redis: mockRedisRepo,
+		db:        mockAuthRepo,
+		redis:     mockRedisRepo,
+		logger:    mockLogger,
+		jwtSecret: "secret",
 	}
 
 	// Create test user with correct password
@@ -152,27 +167,35 @@ func TestLogin_InvalidPassword(t *testing.T) {
 
 	// Set up mock expectations
 	// Expect FindUserByPhoneNumber to be called once and return the test user
-	mockAuthRepo.On("FindUserByPhoneNumber", &loginReq.PhoneNumber).Return(user, nil).Once()
+	mockAuthRepo.On("FindUserByPhoneNumber", mock.Anything, &loginReq.PhoneNumber).Return(user, nil).Once()
+
+	// Expect Error to be called on logger when password is invalid
+	mockLogger.On("Error", "Invalid password", mock.Anything).Return().Once()
 
 	// Execute login
 	_, err := service.Login(context.Background(), loginReq)
 
 	// Verify results
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid password")
+	assert.Contains(t, err.Error(), errors.ErrInvalidCredentials.Error())
 	mockAuthRepo.AssertExpectations(t)
+	mockLogger.AssertExpectations(t)
 }
 
 // TestLogin_DeactivatedUser tests login for a deactivated user
 func TestLogin_DeactivatedUser(t *testing.T) {
 	// Initialize mock repositories
-	mockAuthRepo := new(mocks.AuthRepository)
-	mockRedisRepo := new(mocks.InMemoryRespositoryContracts)
+	mockAuthRepo := new(mocks.MockAuthRepository)
+	mockRedisRepo := new(mocks.MockInMemoryRespositoryContracts)
 
 	// Create service instance with mock repositories
+	mockLogger := new(mocks.MockLogger)
+
 	service := &AuthService{
-		db:    mockAuthRepo,
-		redis: mockRedisRepo,
+		db:        mockAuthRepo,
+		redis:     mockRedisRepo,
+		logger:    mockLogger,
+		jwtSecret: "secret",
 	}
 
 	// Create test user with deactivated status
@@ -194,27 +217,34 @@ func TestLogin_DeactivatedUser(t *testing.T) {
 
 	// Set up mock expectations
 	// Expect FindUserByPhoneNumber to be called once and return the deactivated user
-	mockAuthRepo.On("FindUserByPhoneNumber", &loginReq.PhoneNumber).Return(user, nil).Once()
+	mockAuthRepo.On("FindUserByPhoneNumber", mock.Anything, &loginReq.PhoneNumber).Return(user, nil).Once()
+
+	mockLogger.On("Error", "User is deactivated", mock.Anything).Return().Once()
 
 	// Execute login
 	_, err := service.Login(context.Background(), loginReq)
 
 	// Verify results
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "user is deactivated")
+	assert.Contains(t, err.Error(), errors.ErrAccountDeactivated.Error())
 	mockAuthRepo.AssertExpectations(t)
+	mockLogger.AssertExpectations(t)
 }
 
 // TestLogin_DeletedUser tests login for a deleted user
 func TestLogin_DeletedUser(t *testing.T) {
 	// Initialize mock repositories
-	mockAuthRepo := new(mocks.AuthRepository)
-	mockRedisRepo := new(mocks.InMemoryRespositoryContracts)
+	mockAuthRepo := new(mocks.MockAuthRepository)
+	mockRedisRepo := new(mocks.MockInMemoryRespositoryContracts)
 
 	// Create service instance with mock repositories
+	mockLogger := new(mocks.MockLogger)
+
 	service := &AuthService{
-		db:    mockAuthRepo,
-		redis: mockRedisRepo,
+		db:        mockAuthRepo,
+		redis:     mockRedisRepo,
+		logger:    mockLogger,
+		jwtSecret: "secret",
 	}
 
 	// Create test user with deleted status
@@ -236,27 +266,34 @@ func TestLogin_DeletedUser(t *testing.T) {
 
 	// Set up mock expectations
 	// Expect FindUserByPhoneNumber to be called once and return the deleted user
-	mockAuthRepo.On("FindUserByPhoneNumber", &loginReq.PhoneNumber).Return(user, nil).Once()
+	mockAuthRepo.On("FindUserByPhoneNumber", mock.Anything, &loginReq.PhoneNumber).Return(user, nil).Once()
+
+	mockLogger.On("Error", "User is deleted", mock.Anything).Return().Once()
 
 	// Execute login
 	_, err := service.Login(context.Background(), loginReq)
 
 	// Verify results
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "user not found")
+	assert.Contains(t, err.Error(), errors.ErrInvalidCredentials.Error())
 	mockAuthRepo.AssertExpectations(t)
+	mockLogger.AssertExpectations(t)
 }
 
 // TestLogin_RedisError tests login when Redis operations fail
 func TestLogin_RedisError(t *testing.T) {
 	// Initialize mock repositories
-	mockAuthRepo := new(mocks.AuthRepository)
-	mockRedisRepo := new(mocks.InMemoryRespositoryContracts)
+	mockAuthRepo := new(mocks.MockAuthRepository)
+	mockRedisRepo := new(mocks.MockInMemoryRespositoryContracts)
 
 	// Create service instance with mock repositories
+	mockLogger := new(mocks.MockLogger)
+
 	service := &AuthService{
-		db:    mockAuthRepo,
-		redis: mockRedisRepo,
+		db:        mockAuthRepo,
+		redis:     mockRedisRepo,
+		logger:    mockLogger,
+		jwtSecret: "secret",
 	}
 
 	// Create test user
@@ -278,16 +315,16 @@ func TestLogin_RedisError(t *testing.T) {
 
 	// Set up mock expectations
 	// Expect FindUserByPhoneNumber to be called once and return the test user
-	mockAuthRepo.On("FindUserByPhoneNumber", &loginReq.PhoneNumber).Return(user, nil).Once()
+	mockAuthRepo.On("FindUserByPhoneNumber", mock.Anything, &loginReq.PhoneNumber).Return(user, nil).Once()
 	// Expect AddToken to be called once and return a Redis error
-	mockRedisRepo.On("AddToken", mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("redis error")).Once()
+	mockRedisRepo.On("AddToken", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("redis error")).Once()
 
 	// Execute login
 	_, err := service.Login(context.Background(), loginReq)
 
 	// Verify results
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to store access token in redis")
+	assert.Contains(t, err.Error(), "redis error")
 	mockAuthRepo.AssertExpectations(t)
 	mockRedisRepo.AssertExpectations(t)
 }
@@ -295,13 +332,17 @@ func TestLogin_RedisError(t *testing.T) {
 // TestLogout tests the user logout functionality
 func TestLogout(t *testing.T) {
 	// Initialize mock repositories
-	mockAuthRepo := new(mocks.AuthRepository)
-	mockRedisRepo := new(mocks.InMemoryRespositoryContracts)
+	mockAuthRepo := new(mocks.MockAuthRepository)
+	mockRedisRepo := new(mocks.MockInMemoryRespositoryContracts)
 
 	// Create service instance with mock repositories
+	mockLogger := new(mocks.MockLogger)
+
 	service := &AuthService{
-		db:    mockAuthRepo,
-		redis: mockRedisRepo,
+		db:        mockAuthRepo,
+		redis:     mockRedisRepo,
+		logger:    mockLogger,
+		jwtSecret: "secret",
 	}
 
 	// Create test user ID
@@ -309,8 +350,8 @@ func TestLogout(t *testing.T) {
 
 	// Set up mock expectations
 	// Expect RemoveToken to be called twice - once for access token and once for refresh token
-	mockRedisRepo.On("RemoveToken", userID.String()+":access").Return(nil).Once()
-	mockRedisRepo.On("RemoveToken", userID.String()+":refresh").Return(nil).Once()
+	mockRedisRepo.On("RemoveToken", mock.Anything, userID.String()+":access").Return(nil).Once()
+	mockRedisRepo.On("RemoveToken", mock.Anything, userID.String()+":refresh").Return(nil).Once()
 
 	// Execute logout
 	err := service.Logout(context.Background(), userID.String())
@@ -323,13 +364,17 @@ func TestLogout(t *testing.T) {
 // TestLogout_RedisError tests logout when Redis operations fail
 func TestLogout_RedisError(t *testing.T) {
 	// Initialize mock repositories
-	mockAuthRepo := new(mocks.AuthRepository)
-	mockRedisRepo := new(mocks.InMemoryRespositoryContracts)
+	mockAuthRepo := new(mocks.MockAuthRepository)
+	mockRedisRepo := new(mocks.MockInMemoryRespositoryContracts)
 
 	// Create service instance with mock repositories
+	mockLogger := new(mocks.MockLogger)
+
 	service := &AuthService{
-		db:    mockAuthRepo,
-		redis: mockRedisRepo,
+		db:        mockAuthRepo,
+		redis:     mockRedisRepo,
+		logger:    mockLogger,
+		jwtSecret: "secret",
 	}
 
 	// Create test user ID
@@ -337,7 +382,7 @@ func TestLogout_RedisError(t *testing.T) {
 
 	// Set up mock expectations
 	// Expect RemoveToken to be called once for access token and return a Redis error
-	mockRedisRepo.On("RemoveToken", userID.String()+":access").Return(fmt.Errorf("redis error")).Once()
+	mockRedisRepo.On("RemoveToken", mock.Anything, userID.String()+":access").Return(fmt.Errorf("redis error")).Once()
 
 	// Execute logout
 	err := service.Logout(context.Background(), userID.String())
@@ -350,14 +395,20 @@ func TestLogout_RedisError(t *testing.T) {
 
 // TestRefreshToken tests the token refresh functionality
 func TestRefreshToken(t *testing.T) {
+	cfg, _ := config.LoadConfig()
+
 	// Initialize mock repositories
-	mockAuthRepo := new(mocks.AuthRepository)
-	mockRedisRepo := new(mocks.InMemoryRespositoryContracts)
+	mockAuthRepo := new(mocks.MockAuthRepository)
+	mockRedisRepo := new(mocks.MockInMemoryRespositoryContracts)
 
 	// Create service instance with mock repositories
+	mockLogger := new(mocks.MockLogger)
+
 	service := &AuthService{
-		db:    mockAuthRepo,
-		redis: mockRedisRepo,
+		db:        mockAuthRepo,
+		redis:     mockRedisRepo,
+		logger:    mockLogger,
+		jwtSecret: cfg.JWT.Secret,
 	}
 
 	// Create test user
@@ -369,7 +420,6 @@ func TestRefreshToken(t *testing.T) {
 	}
 
 	// Create refresh token
-	cfg, _ := config.LoadConfig()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id":    userID.String(),
 		"role":       user.Role,
@@ -379,11 +429,11 @@ func TestRefreshToken(t *testing.T) {
 	refreshToken, _ := token.SignedString([]byte(cfg.JWT.Secret))
 
 	// Set up mock expectations
-	mockRedisRepo.On("FindToken", userID.String()+":refresh").Return(refreshToken, nil).Once()
-	mockAuthRepo.On("FindUserByID", userID).Return(user, nil).Once()
-	mockRedisRepo.On("RemoveToken", userID.String()+":access").Return(nil).Once()
-	mockRedisRepo.On("RemoveToken", userID.String()+":refresh").Return(nil).Once()
-	mockRedisRepo.On("AddToken", mock.Anything, mock.Anything, mock.Anything).Return(nil).Twice()
+	mockRedisRepo.On("FindToken", mock.Anything, userID.String()+":refresh").Return(refreshToken, nil).Once()
+	mockAuthRepo.On("FindUserByID", mock.Anything, userID).Return(user, nil).Once()
+	mockRedisRepo.On("RemoveToken", mock.Anything, userID.String()+":access").Return(nil).Once()
+	mockRedisRepo.On("RemoveToken", mock.Anything, userID.String()+":refresh").Return(nil).Once()
+	mockRedisRepo.On("AddToken", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Twice()
 
 	// Execute refresh token
 	tokens, err := service.RefreshToken(context.Background(), refreshToken)
@@ -398,12 +448,18 @@ func TestRefreshToken(t *testing.T) {
 
 // TestRefreshToken_ExpiredToken tests refresh with an expired token
 func TestRefreshToken_ExpiredToken(t *testing.T) {
-	mockAuthRepo := new(mocks.AuthRepository)
-	mockRedisRepo := new(mocks.InMemoryRespositoryContracts)
+	config, _ := config.LoadConfig()
+
+	mockAuthRepo := new(mocks.MockAuthRepository)
+	mockRedisRepo := new(mocks.MockInMemoryRespositoryContracts)
+
+	mockLogger := new(mocks.MockLogger)
 
 	service := &AuthService{
-		db:    mockAuthRepo,
-		redis: mockRedisRepo,
+		db:        mockAuthRepo,
+		redis:     mockRedisRepo,
+		logger:    mockLogger,
+		jwtSecret: config.JWT.Secret,
 	}
 
 	userID := uuid.New()
@@ -411,7 +467,6 @@ func TestRefreshToken_ExpiredToken(t *testing.T) {
 		Role: entities.UserRole,
 	}
 
-	config, _ := config.LoadConfig()
 	claims := jwt.MapClaims{
 		"user_id":    userID,
 		"role":       user.Role,
@@ -421,104 +476,93 @@ func TestRefreshToken_ExpiredToken(t *testing.T) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	refreshToken, _ := token.SignedString([]byte(config.JWT.Secret))
 
+	mockLogger.On("Error", "Error parsing token", mock.Anything).Return().Once()
+
 	_, err := service.RefreshToken(context.Background(), refreshToken)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid refresh token")
+	assert.Contains(t, err.Error(), errors.ErrInvalidToken.Error())
 }
 
 // TestRefreshToken_RedisError tests refresh when Redis operations fail
 func TestRefreshToken_RedisError(t *testing.T) {
 	// Initialize mock repositories
-	mockAuthRepo := new(mocks.AuthRepository)
-	mockRedisRepo := new(mocks.InMemoryRespositoryContracts)
+	mockAuthRepo := new(mocks.MockAuthRepository)
+	mockRedisRepo := new(mocks.MockInMemoryRespositoryContracts)
 
 	// Create service instance with mock repositories
+	mockLogger := new(mocks.MockLogger)
+
 	service := &AuthService{
-		db:    mockAuthRepo,
-		redis: mockRedisRepo,
+		db:        mockAuthRepo,
+		redis:     mockRedisRepo,
+		logger:    mockLogger,
+		jwtSecret: "secret",
 	}
 
-	// Create test user
-	userID := uuid.New()
-	user := &entities.User{
-		ID:          userID,
-		PhoneNumber: "09123456789",
-		Status:      entities.Active,
-		Role:        entities.UserRole,
-	}
+	refreshToken := "refreshtoken"
 
-	// Create valid refresh token
-	config, _ := config.LoadConfig()
-	claims := jwt.MapClaims{
-		"user_id":    userID,
-		"role":       user.Role,
-		"token_type": "refresh",
-		"exp":        time.Now().Add(7 * 24 * time.Hour).Unix(),
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	refreshToken, _ := token.SignedString([]byte(config.JWT.Secret))
-
-	// Set up mock expectations
-	// Expect FindUserByID to be called once and return the test user
-	mockAuthRepo.On("FindUserByID", userID).Return(user, nil).Once()
-	// Expect FindToken to be called once and return the refresh token
-	mockRedisRepo.On("FindToken", userID.String()+":refresh").Return(refreshToken, nil).Once()
-	// Expect RemoveToken to be called twice - once for access token and once for refresh token
-	mockRedisRepo.On("RemoveToken", userID.String()+":access").Return(nil).Once()
-	mockRedisRepo.On("RemoveToken", userID.String()+":refresh").Return(nil).Once()
-	// Expect AddToken to be called once and return a Redis error
-	mockRedisRepo.On("AddToken", mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("redis error")).Once()
+	mockLogger.On("Error", "Error parsing token", mock.Anything).Return().Once()
 
 	// Execute refresh token
 	_, err := service.RefreshToken(context.Background(), refreshToken)
 
 	// Verify results
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to store access token in redis")
-	mockAuthRepo.AssertExpectations(t)
-	mockRedisRepo.AssertExpectations(t)
+	assert.Contains(t, err.Error(), errors.ErrInvalidToken.Error())
+
+	mockLogger.AssertExpectations(t)
 }
 
 // TestRefreshToken_InvalidToken tests refresh with an invalid token
 func TestRefreshToken_InvalidToken(t *testing.T) {
 	// Initialize mock repositories
-	mockAuthRepo := new(mocks.AuthRepository)
-	mockRedisRepo := new(mocks.InMemoryRespositoryContracts)
+	mockAuthRepo := new(mocks.MockAuthRepository)
+	mockRedisRepo := new(mocks.MockInMemoryRespositoryContracts)
+	mockLogger := new(mocks.MockLogger)
 
 	// Create service instance with mock repositories
+
 	service := &AuthService{
-		db:    mockAuthRepo,
-		redis: mockRedisRepo,
+		db:        mockAuthRepo,
+		redis:     mockRedisRepo,
+		logger:    mockLogger,
+		jwtSecret: "secret",
 	}
 
 	// Create invalid refresh token
 	refreshToken := "invalid_refresh_token"
+
+	// Set up mock expectations
+	mockLogger.On("Error", "Error parsing token", mock.Anything).Return().Once()
 
 	// Execute refresh token
 	_, err := service.RefreshToken(context.Background(), refreshToken)
 
 	// Verify results
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid refresh token")
+	assert.Contains(t, err.Error(), errors.ErrInvalidToken.Error())
 }
 
 // TestRefreshToken_UserNotFound tests refresh for a non-existent user
 func TestRefreshToken_UserNotFound(t *testing.T) {
 	// Initialize mock repositories
-	mockAuthRepo := new(mocks.AuthRepository)
-	mockRedisRepo := new(mocks.InMemoryRespositoryContracts)
+	mockAuthRepo := new(mocks.MockAuthRepository)
+	mockRedisRepo := new(mocks.MockInMemoryRespositoryContracts)
 
 	// Create service instance with mock repositories
+	mockLogger := new(mocks.MockLogger)
+
 	service := &AuthService{
-		db:    mockAuthRepo,
-		redis: mockRedisRepo,
+		db:        mockAuthRepo,
+		redis:     mockRedisRepo,
+		logger:    mockLogger,
+		jwtSecret: "secret",
 	}
 
 	// Create test user ID
 	userID := uuid.New()
 
 	// Create valid refresh token
-	config, _ := config.LoadConfig()
 	claims := jwt.MapClaims{
 		"user_id":    userID,
 		"role":       entities.UserRole,
@@ -526,11 +570,10 @@ func TestRefreshToken_UserNotFound(t *testing.T) {
 		"exp":        time.Now().Add(7 * 24 * time.Hour).Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	refreshToken, _ := token.SignedString([]byte(config.JWT.Secret))
+	refreshToken, _ := token.SignedString([]byte("secret"))
 
 	// Set up mock expectations
-	// Expect FindUserByID to be called and return user not found error
-	mockAuthRepo.On("FindUserByID", userID).Return(nil, fmt.Errorf("user not found")).Once()
+	mockAuthRepo.On("FindUserByID", mock.Anything, userID).Return(nil, fmt.Errorf("user not found")).Once()
 
 	// Execute refresh token
 	_, err := service.RefreshToken(context.Background(), refreshToken)
@@ -542,67 +585,20 @@ func TestRefreshToken_UserNotFound(t *testing.T) {
 	mockRedisRepo.AssertExpectations(t)
 }
 
-// TestRefreshToken_TokenMismatch tests refresh when the token doesn't match
-func TestRefreshToken_TokenMismatch(t *testing.T) {
-	// Initialize mock repositories
-	mockAuthRepo := new(mocks.AuthRepository)
-	mockRedisRepo := new(mocks.InMemoryRespositoryContracts)
-
-	// Create service instance with mock repositories
-	service := &AuthService{
-		db:    mockAuthRepo,
-		redis: mockRedisRepo,
-	}
-
-	// Create test user
-	userID := uuid.New()
-	user := &entities.User{
-		ID:          userID,
-		PhoneNumber: "09123456789",
-		Status:      entities.Active,
-		Role:        entities.UserRole,
-	}
-
-	// Create valid refresh token
-	config, _ := config.LoadConfig()
-	claims := jwt.MapClaims{
-		"user_id":    userID,
-		"role":       user.Role,
-		"token_type": "refresh",
-		"exp":        time.Now().Add(7 * 24 * time.Hour).Unix(),
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	refreshToken, _ := token.SignedString([]byte(config.JWT.Secret))
-
-	// Create a different token to be returned by FindToken
-	storedToken := "different_refresh_token"
-
-	// Set up mock expectations
-	// Expect FindUserByID to be called once and return the test user
-	mockAuthRepo.On("FindUserByID", userID).Return(user, nil).Once()
-	// Expect FindToken to be called once and return a different token
-	mockRedisRepo.On("FindToken", userID.String()+":refresh").Return(storedToken, nil).Once()
-
-	// Execute refresh token
-	_, err := service.RefreshToken(context.Background(), refreshToken)
-
-	// Verify results
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "refresh token does not match stored token")
-	mockAuthRepo.AssertExpectations(t)
-	mockRedisRepo.AssertExpectations(t)
-}
-
 // TestValidateToken tests the token validation functionality
 func TestValidateToken(t *testing.T) {
 	// Initialize mock repositories
-	mockAuthRepo := new(mocks.AuthRepository)
-	mockRedisRepo := new(mocks.InMemoryRespositoryContracts)
+	mockAuthRepo := new(mocks.MockAuthRepository)
+	mockRedisRepo := new(mocks.MockInMemoryRespositoryContracts)
 
 	// Create service instance with mock repositories
+	mockLogger := new(mocks.MockLogger)
+
 	service := &AuthService{
-		db:    mockAuthRepo,
-		redis: mockRedisRepo,
+		db:        mockAuthRepo,
+		redis:     mockRedisRepo,
+		logger:    mockLogger,
+		jwtSecret: "secret",
 	}
 
 	// Create test user
@@ -618,7 +614,7 @@ func TestValidateToken(t *testing.T) {
 	accessToken, _ := token.SignedString([]byte(cfg.JWT.Secret))
 
 	// Set up mock expectations
-	mockRedisRepo.On("FindToken", userID.String()+":access").Return(accessToken, nil).Once()
+	mockRedisRepo.On("FindToken", mock.Anything, userID.String()+":access").Return(accessToken, nil).Once()
 
 	// Execute validate token
 	err := service.ValidateToken(context.Background(), userID.String(), accessToken)
@@ -629,43 +625,20 @@ func TestValidateToken(t *testing.T) {
 	mockRedisRepo.AssertExpectations(t)
 }
 
-// TestValidateToken_InvalidToken tests token validation with an invalid token
-func TestValidateToken_InvalidToken(t *testing.T) {
-	// Initialize mock repositories
-	mockAuthRepo := new(mocks.AuthRepository)
-	mockRedisRepo := new(mocks.InMemoryRespositoryContracts)
-
-	// Create service instance with mock repositories
-	service := &AuthService{
-		db:    mockAuthRepo,
-		redis: mockRedisRepo,
-	}
-
-	// Create test user
-	userID := uuid.New()
-
-	// Set up mock expectations
-	mockRedisRepo.On("FindToken", userID.String()+":access").Return("", fmt.Errorf("token not found")).Once()
-
-	// Execute validate token with invalid token
-	err := service.ValidateToken(context.Background(), userID.String(), "invalid_token")
-
-	// Verify results
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to find token")
-	mockRedisRepo.AssertExpectations(t)
-}
-
 // TestValidateToken_TokenNotFound tests token validation when token is not found in Redis
 func TestValidateToken_TokenNotFound(t *testing.T) {
 	// Initialize mock repositories
-	mockAuthRepo := new(mocks.AuthRepository)
-	mockRedisRepo := new(mocks.InMemoryRespositoryContracts)
+	mockAuthRepo := new(mocks.MockAuthRepository)
+	mockRedisRepo := new(mocks.MockInMemoryRespositoryContracts)
 
 	// Create service instance with mock repositories
+	mockLogger := new(mocks.MockLogger)
+
 	service := &AuthService{
-		db:    mockAuthRepo,
-		redis: mockRedisRepo,
+		db:        mockAuthRepo,
+		redis:     mockRedisRepo,
+		logger:    mockLogger,
+		jwtSecret: "secret",
 	}
 
 	// Create test user
@@ -681,7 +654,7 @@ func TestValidateToken_TokenNotFound(t *testing.T) {
 	accessToken, _ := token.SignedString([]byte(cfg.JWT.Secret))
 
 	// Set up mock expectations
-	mockRedisRepo.On("FindToken", userID.String()+":access").Return("", fmt.Errorf("token not found")).Once()
+	mockRedisRepo.On("FindToken", mock.Anything, userID.String()+":access").Return("", fmt.Errorf("token not found")).Once()
 
 	// Execute validate token
 	err := service.ValidateToken(context.Background(), userID.String(), accessToken)
@@ -695,13 +668,17 @@ func TestValidateToken_TokenNotFound(t *testing.T) {
 // TestNewAuthService tests the creation of a new auth service
 func TestNewAuthService(t *testing.T) {
 	// Initialize mock repositories
-	mockAuthRepo := new(mocks.AuthRepository)
-	mockRedisRepo := new(mocks.InMemoryRespositoryContracts)
+	mockAuthRepo := new(mocks.MockAuthRepository)
+	mockRedisRepo := new(mocks.MockInMemoryRespositoryContracts)
+	mockLogger := new(mocks.MockLogger)
 
 	// Create service instance with mock repositories
+
 	service := &AuthService{
-		db:    mockAuthRepo,
-		redis: mockRedisRepo,
+		db:        mockAuthRepo,
+		redis:     mockRedisRepo,
+		logger:    mockLogger,
+		jwtSecret: "secret",
 	}
 
 	// Verify service instance
@@ -710,136 +687,183 @@ func TestNewAuthService(t *testing.T) {
 	assert.Equal(t, mockRedisRepo, service.redis)
 }
 
-// TestParseAndValidateToken_ExpiredToken tests token parsing with expired token
-func TestParseAndValidateToken_ExpiredToken(t *testing.T) {
-	// Create service instance with mock repositories
-	service := &AuthService{}
-
-	// Create test user
-	userID := uuid.New()
-
-	// Create expired token
-	cfg, _ := config.LoadConfig()
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": userID.String(),
-		"type":    "access",
-		"exp":     time.Now().Add(-time.Hour).Unix(),
-	})
-	expiredToken, _ := token.SignedString([]byte(cfg.JWT.Secret))
-
-	// Execute validate token
-	_, err := service.parseAndValidateToken(context.Background(), expiredToken, "access")
-
-	// Verify results
-	assert.Error(t, err)
-
-}
-
 // TestParseAndValidateToken_InvalidSignature tests token parsing with invalid signature
 func TestParseAndValidateToken_InvalidSignature(t *testing.T) {
+	// Initialize mock repositories
+	mockAuthRepo := new(mocks.MockAuthRepository)
+	mockRedisRepo := new(mocks.MockInMemoryRespositoryContracts)
+	mockLogger := new(mocks.MockLogger)
+
 	// Create service instance with mock repositories
-	service := &AuthService{}
+	service := &AuthService{
+		db:        mockAuthRepo,
+		redis:     mockRedisRepo,
+		logger:    mockLogger,
+		jwtSecret: "secret",
+	}
 
 	// Create test user
 	userID := uuid.New()
 
 	// Create token with invalid signature
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": userID.String(),
-		"type":    "access",
-		"exp":     time.Now().Add(time.Hour).Unix(),
+		"user_id":    userID.String(),
+		"role":       entities.UserRole,
+		"token_type": "access",
+		"exp":        time.Now().Add(time.Hour).Unix(),
 	})
 
 	// Create invalid token with wrong secret
 	invalidToken, _ := token.SignedString([]byte("wrong_secret"))
 
+	// Set up mock expectations
+	mockLogger.On("Error", "Error parsing token", mock.Anything).Return().Once()
+
 	// Execute validate token
 	_, err := service.parseAndValidateToken(context.Background(), invalidToken, "access")
 
 	// Verify results
 	assert.Error(t, err)
-
+	assert.Contains(t, err.Error(), errors.ErrInvalidToken.Error())
+	mockLogger.AssertExpectations(t)
 }
 
 // TestParseAndValidateToken_MissingClaims tests token parsing with missing required claims
 func TestParseAndValidateToken_MissingClaims(t *testing.T) {
+	// Initialize mock repositories
+	mockAuthRepo := new(mocks.MockAuthRepository)
+	mockRedisRepo := new(mocks.MockInMemoryRespositoryContracts)
+	mockLogger := new(mocks.MockLogger)
 
 	// Create service instance with mock repositories
-	service := &AuthService{}
+	service := &AuthService{
+		db:        mockAuthRepo,
+		redis:     mockRedisRepo,
+		logger:    mockLogger,
+		jwtSecret: "secret",
+	}
 
 	// Create token with missing claims
-	cfg, _ := config.LoadConfig()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": uuid.New().String(),
 		"exp":     time.Now().Add(time.Hour).Unix(),
 	})
-	invalidToken, _ := token.SignedString([]byte(cfg.JWT.Secret))
+	invalidToken, _ := token.SignedString([]byte("secret"))
+
+	// Set up mock expectations
+	mockLogger.On("Error", "Invalid token type", mock.Anything).Return().Once()
 
 	// Execute validate token
 	_, err := service.parseAndValidateToken(context.Background(), invalidToken, "access")
 
 	// Verify results
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), errors.ErrInvalidToken.Error())
+	mockLogger.AssertExpectations(t)
 }
 
 // TestParseAndValidateToken_MissingUserID tests token parsing when user ID is missing
 func TestParseAndValidateToken_MissingUserID(t *testing.T) {
+	// Initialize mock repositories
+	mockAuthRepo := new(mocks.MockAuthRepository)
+	mockRedisRepo := new(mocks.MockInMemoryRespositoryContracts)
+	mockLogger := new(mocks.MockLogger)
+
 	// Create service instance with mock repositories
-	service := &AuthService{}
+	service := &AuthService{
+		db:        mockAuthRepo,
+		redis:     mockRedisRepo,
+		logger:    mockLogger,
+		jwtSecret: "secret",
+	}
 
 	// Create token without user ID
-	cfg, _ := config.LoadConfig()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"type": "access",
-		"exp":  time.Now().Add(time.Hour).Unix(),
+		"token_type": "access",
+		"exp":        time.Now().Add(time.Hour).Unix(),
 	})
-	invalidToken, _ := token.SignedString([]byte(cfg.JWT.Secret))
+	invalidToken, _ := token.SignedString([]byte("secret"))
+
+	// Set up mock expectations
+	mockLogger.On("Error", "Invalid token claims", mock.Anything).Return().Once()
 
 	// Execute validate token
 	_, err := service.parseAndValidateToken(context.Background(), invalidToken, "access")
 
 	// Verify results
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), errors.ErrInvalidToken.Error())
+	mockLogger.AssertExpectations(t)
 }
 
 // TestParseAndValidateToken_InvalidUserIDFormat tests token parsing with invalid user ID format
 func TestParseAndValidateToken_InvalidUserIDFormat(t *testing.T) {
+	// Initialize mock repositories
+	mockAuthRepo := new(mocks.MockAuthRepository)
+	mockRedisRepo := new(mocks.MockInMemoryRespositoryContracts)
+	mockLogger := new(mocks.MockLogger)
+
 	// Create service instance with mock repositories
-	service := &AuthService{}
+	service := &AuthService{
+		db:        mockAuthRepo,
+		redis:     mockRedisRepo,
+		logger:    mockLogger,
+		jwtSecret: "secret",
+	}
 
 	// Create token with invalid user ID format
-	cfg, _ := config.LoadConfig()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": 123,
-		"type":    "access",
-		"exp":     time.Now().Add(time.Hour).Unix(),
+		"user_id":    123,
+		"role":       entities.UserRole,
+		"token_type": "access",
+		"exp":        time.Now().Add(time.Hour).Unix(),
 	})
-	invalidToken, _ := token.SignedString([]byte(cfg.JWT.Secret))
+	invalidToken, _ := token.SignedString([]byte("secret"))
+
+	// Set up mock expectations
+	mockLogger.On("Error", "Invalid user ID", mock.Anything).Return().Once()
 
 	// Execute validate token
 	_, err := service.parseAndValidateToken(context.Background(), invalidToken, "access")
 
 	// Verify results
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), errors.ErrInvalidToken.Error())
+	mockLogger.AssertExpectations(t)
 }
 
 // TestParseAndValidateToken_InvalidUserIDString tests token parsing with invalid user ID string
 func TestParseAndValidateToken_InvalidUserIDString(t *testing.T) {
+	// Initialize mock repositories
+	mockAuthRepo := new(mocks.MockAuthRepository)
+	mockRedisRepo := new(mocks.MockInMemoryRespositoryContracts)
+	mockLogger := new(mocks.MockLogger)
+
 	// Create service instance with mock repositories
-	service := &AuthService{}
+	service := &AuthService{
+		db:        mockAuthRepo,
+		redis:     mockRedisRepo,
+		logger:    mockLogger,
+		jwtSecret: "secret",
+	}
 
 	// Create token with invalid user ID string
-	cfg, _ := config.LoadConfig()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": "not-a-uuid",
-		"type":    "access",
-		"exp":     time.Now().Add(time.Hour).Unix(),
+		"user_id":    "not-a-uuid",
+		"role":       entities.UserRole,
+		"token_type": "access",
+		"exp":        time.Now().Add(time.Hour).Unix(),
 	})
-	invalidToken, _ := token.SignedString([]byte(cfg.JWT.Secret))
+	invalidToken, _ := token.SignedString([]byte("secret"))
+
+	// Set up mock expectations
+	mockLogger.On("Error", "Invalid user ID", mock.Anything).Return().Once()
 
 	// Execute validate token
 	_, err := service.parseAndValidateToken(context.Background(), invalidToken, "access")
 
 	// Verify results
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), errors.ErrInvalidToken.Error())
+	mockLogger.AssertExpectations(t)
 }

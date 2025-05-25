@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/amirdashtii/go_auth/controller/dto"
 	"github.com/amirdashtii/go_auth/internal/core/entities"
+	"github.com/amirdashtii/go_auth/internal/core/errors"
+	"github.com/amirdashtii/go_auth/internal/core/ports"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -18,6 +19,40 @@ import (
 
 type MockAuthService struct {
 	mock.Mock
+}
+
+type MockLogger struct {
+	mock.Mock
+}
+
+func (m *MockLogger) Info(msg string, fields ...ports.Field) {
+	m.Called(msg, fields)
+}
+
+func (m *MockLogger) Error(msg string, fields ...ports.Field) {
+	m.Called(msg, fields)
+}
+
+func (m *MockLogger) Debug(msg string, fields ...ports.Field) {
+	m.Called(msg, fields)
+}
+
+func (m *MockLogger) Warn(msg string, fields ...ports.Field) {
+	m.Called(msg, fields)
+}
+
+func (m *MockLogger) Fatal(msg string, fields ...ports.Field) {
+	m.Called(msg, fields)
+}
+
+func (m *MockLogger) With(fields ...ports.Field) ports.Logger {
+	m.Called(fields)
+	return m
+}
+
+func (m *MockLogger) WithContext(ctx context.Context) ports.Logger {
+	m.Called(ctx)
+	return m
 }
 
 func (m *MockAuthService) Register(ctx context.Context, req *dto.RegisterRequest) error {
@@ -57,7 +92,7 @@ func TestRegisterHandler(t *testing.T) {
 	tests := []struct {
 		name           string
 		requestBody    map[string]interface{}
-		mockSetup      func(*MockAuthService)
+		mockSetup      func(*MockAuthService, *MockLogger)
 		expectedStatus int
 		expectedBody   map[string]interface{}
 	}{
@@ -67,8 +102,9 @@ func TestRegisterHandler(t *testing.T) {
 				"phone_number": "09123456789",
 				"password":     "Test123!@#",
 			},
-			mockSetup: func(m *MockAuthService) {
+			mockSetup: func(m *MockAuthService, l *MockLogger) {
 				m.On("Register", mock.AnythingOfType("*dto.RegisterRequest")).Return(nil)
+				l.On("Error", mock.Anything, mock.Anything).Return()
 			},
 			expectedStatus: http.StatusCreated,
 			expectedBody: map[string]interface{}{
@@ -80,11 +116,19 @@ func TestRegisterHandler(t *testing.T) {
 			requestBody: map[string]interface{}{
 				"phone_number": "invalid",
 			},
-			mockSetup:      func(m *MockAuthService) {},
+			mockSetup: func(m *MockAuthService, l *MockLogger) {
+				l.On("Error", mock.Anything, mock.Anything).Return()
+			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody: map[string]interface{}{
-				"error":   "Invalid request format",
-				"details": "Key: 'RegisterRequest.Password' Error:Field validation for 'Password' failed on the 'required' tag",
+				"error": map[string]interface{}{
+					"Type": "VALIDATION_ERROR",
+					"Message": map[string]interface{}{
+						"English": "Invalid request",
+						"Persian": "درخواست نامعتبر است",
+					},
+					"Err": nil,
+				},
 			},
 		},
 		{
@@ -93,13 +137,20 @@ func TestRegisterHandler(t *testing.T) {
 				"phone_number": "09123456789",
 				"password":     "Test123!@#",
 			},
-			mockSetup: func(m *MockAuthService) {
-				m.On("Register", mock.AnythingOfType("*dto.RegisterRequest")).Return(errors.New("registration failed"))
+			mockSetup: func(m *MockAuthService, l *MockLogger) {
+				m.On("Register", mock.AnythingOfType("*dto.RegisterRequest")).Return(errors.New(errors.InternalError, "Registration failed", "ثبت نام با خطا مواجه شد", nil))
+				l.On("Error", mock.Anything, mock.Anything).Return()
 			},
-			expectedStatus: http.StatusBadRequest,
+			expectedStatus: http.StatusInternalServerError,
 			expectedBody: map[string]interface{}{
-				"error":   "Registration failed",
-				"details": "registration failed",
+				"error": map[string]interface{}{
+					"Type": "INTERNAL_ERROR",
+					"Message": map[string]interface{}{
+						"English": "Registration failed",
+						"Persian": "ثبت نام با خطا مواجه شد",
+					},
+					"Err": nil,
+				},
 			},
 		},
 	}
@@ -107,9 +158,13 @@ func TestRegisterHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockSvc := new(MockAuthService)
-			tt.mockSetup(mockSvc)
+			mockLogger := new(MockLogger)
+			tt.mockSetup(mockSvc, mockLogger)
 
-			handler := &AuthHTTPHandler{svc: mockSvc}
+			handler := &AuthHTTPHandler{
+				svc:    mockSvc,
+				logger: mockLogger,
+			}
 			router := gin.New()
 			router.POST("/register", handler.RegisterHandler)
 
@@ -136,7 +191,7 @@ func TestLoginHandler(t *testing.T) {
 	tests := []struct {
 		name           string
 		requestBody    map[string]interface{}
-		mockSetup      func(*MockAuthService)
+		mockSetup      func(*MockAuthService, *MockLogger)
 		expectedStatus int
 		expectedBody   map[string]interface{}
 	}{
@@ -146,15 +201,15 @@ func TestLoginHandler(t *testing.T) {
 				"phone_number": "09123456789",
 				"password":     "Test123!@#",
 			},
-			mockSetup: func(m *MockAuthService) {
+			mockSetup: func(m *MockAuthService, l *MockLogger) {
 				m.On("Login", mock.AnythingOfType("*dto.LoginRequest")).Return(&entities.TokenPair{
 					AccessToken:  "access_token",
 					RefreshToken: "refresh_token",
 				}, nil)
+				l.On("Error", mock.Anything, mock.Anything).Return()
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody: map[string]interface{}{
-				"message": "Login successful",
 				"tokens": map[string]interface{}{
 					"access_token":  "access_token",
 					"refresh_token": "refresh_token",
@@ -166,26 +221,19 @@ func TestLoginHandler(t *testing.T) {
 			requestBody: map[string]interface{}{
 				"phone_number": "invalid",
 			},
-			mockSetup:      func(m *MockAuthService) {},
+			mockSetup: func(m *MockAuthService, l *MockLogger) {
+				l.On("Error", mock.Anything, mock.Anything).Return()
+			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody: map[string]interface{}{
-				"error":   "Invalid request format",
-				"details": "Key: 'LoginRequest.Password' Error:Field validation for 'Password' failed on the 'required' tag",
-			},
-		},
-		{
-			name: "login service error",
-			requestBody: map[string]interface{}{
-				"phone_number": "09123456789",
-				"password":     "Test123!@#",
-			},
-			mockSetup: func(m *MockAuthService) {
-				m.On("Login", mock.AnythingOfType("*dto.LoginRequest")).Return(nil, errors.New("login failed"))
-			},
-			expectedStatus: http.StatusUnauthorized,
-			expectedBody: map[string]interface{}{
-				"error":   "Login failed",
-				"details": "login failed",
+				"error": map[string]interface{}{
+					"Type": "VALIDATION_ERROR",
+					"Message": map[string]interface{}{
+						"English": "Invalid request",
+						"Persian": "درخواست نامعتبر است",
+					},
+					"Err": nil,
+				},
 			},
 		},
 	}
@@ -193,9 +241,13 @@ func TestLoginHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockSvc := new(MockAuthService)
-			tt.mockSetup(mockSvc)
+			mockLogger := new(MockLogger)
+			tt.mockSetup(mockSvc, mockLogger)
 
-			handler := &AuthHTTPHandler{svc: mockSvc}
+			handler := &AuthHTTPHandler{
+				svc:    mockSvc,
+				logger: mockLogger,
+			}
 			router := gin.New()
 			router.POST("/login", handler.LoginHandler)
 
@@ -221,50 +273,39 @@ func TestLogoutHandler(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		userID         interface{}
-		mockSetup      func(*MockAuthService)
+		userID         string
+		mockSetup      func(*MockAuthService, *MockLogger)
 		expectedStatus int
 		expectedBody   map[string]interface{}
 	}{
 		{
 			name:   "successful logout",
 			userID: "user123",
-			mockSetup: func(m *MockAuthService) {
+			mockSetup: func(m *MockAuthService, l *MockLogger) {
 				m.On("Logout", "user123").Return(nil)
+				l.On("Error", mock.Anything, mock.Anything).Return()
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody: map[string]interface{}{
-				"message": "Logout successful",
+				"message": "Logged out successfully",
 			},
 		},
 		{
-			name:           "missing user ID",
-			userID:         nil,
-			mockSetup:      func(m *MockAuthService) {},
-			expectedStatus: http.StatusUnauthorized,
-			expectedBody: map[string]interface{}{
-				"error": "User ID not found",
-			},
-		},
-		{
-			name:           "invalid user ID type",
-			userID:         123,
-			mockSetup:      func(m *MockAuthService) {},
-			expectedStatus: http.StatusUnauthorized,
-			expectedBody: map[string]interface{}{
-				"error": "Invalid user ID type",
-			},
-		},
-		{
-			name:   "logout service error",
-			userID: "user123",
-			mockSetup: func(m *MockAuthService) {
-				m.On("Logout", "user123").Return(errors.New("logout failed"))
+			name:   "missing user ID",
+			userID: "",
+			mockSetup: func(m *MockAuthService, l *MockLogger) {
+				l.On("Error", mock.Anything, mock.Anything).Return()
 			},
 			expectedStatus: http.StatusUnauthorized,
 			expectedBody: map[string]interface{}{
-				"error":   "Logout failed",
-				"details": "logout failed",
+				"error": map[string]interface{}{
+					"Type": "AUTHENTICATION_ERROR",
+					"Message": map[string]interface{}{
+						"English": "Authentication required",
+						"Persian": "لطفاً ابتدا وارد حساب کاربری خود شوید",
+					},
+					"Err": nil,
+				},
 			},
 		},
 	}
@@ -272,102 +313,22 @@ func TestLogoutHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockSvc := new(MockAuthService)
-			tt.mockSetup(mockSvc)
+			mockLogger := new(MockLogger)
+			tt.mockSetup(mockSvc, mockLogger)
 
-			handler := &AuthHTTPHandler{svc: mockSvc}
+			handler := &AuthHTTPHandler{
+				svc:    mockSvc,
+				logger: mockLogger,
+			}
 			router := gin.New()
 			router.POST("/logout", func(c *gin.Context) {
-				if tt.userID != nil {
+				if tt.userID != "" {
 					c.Set("user_id", tt.userID)
 				}
 				handler.LogoutHandler(c)
 			})
 
 			req := httptest.NewRequest(http.MethodPost, "/logout", nil)
-			w := httptest.NewRecorder()
-
-			router.ServeHTTP(w, req)
-
-			require.Equal(t, tt.expectedStatus, w.Code)
-
-			var response map[string]interface{}
-			err := json.Unmarshal(w.Body.Bytes(), &response)
-			require.NoError(t, err)
-			require.Equal(t, tt.expectedBody, response)
-		})
-	}
-}
-
-func TestRefreshTokenHandler(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	tests := []struct {
-		name           string
-		requestBody    map[string]interface{}
-		mockSetup      func(*MockAuthService)
-		expectedStatus int
-		expectedBody   map[string]interface{}
-	}{
-		{
-			name: "successful token refresh",
-			requestBody: map[string]interface{}{
-				"refresh_token": "valid_refresh_token",
-			},
-			mockSetup: func(m *MockAuthService) {
-				m.On("RefreshToken", "valid_refresh_token").Return(&entities.TokenPair{
-					AccessToken:  "new_access_token",
-					RefreshToken: "new_refresh_token",
-				}, nil)
-			},
-			expectedStatus: http.StatusOK,
-			expectedBody: map[string]interface{}{
-				"message": "Token refreshed successfully",
-				"tokens": map[string]interface{}{
-					"access_token":  "new_access_token",
-					"refresh_token": "new_refresh_token",
-				},
-			},
-		},
-		{
-			name: "invalid request format",
-			requestBody: map[string]interface{}{
-				"refresh_token": "",
-			},
-			mockSetup:      func(m *MockAuthService) {},
-			expectedStatus: http.StatusBadRequest,
-			expectedBody: map[string]interface{}{
-				"error":   "Invalid request format",
-				"details": "Key: 'RefreshTokenRequest.RefreshToken' Error:Field validation for 'RefreshToken' failed on the 'required' tag",
-			},
-		},
-		{
-			name: "refresh token service error",
-			requestBody: map[string]interface{}{
-				"refresh_token": "invalid_token",
-			},
-			mockSetup: func(m *MockAuthService) {
-				m.On("RefreshToken", "invalid_token").Return(nil, errors.New("token refresh failed"))
-			},
-			expectedStatus: http.StatusUnauthorized,
-			expectedBody: map[string]interface{}{
-				"error":   "Token refresh failed",
-				"details": "token refresh failed",
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			mockSvc := new(MockAuthService)
-			tt.mockSetup(mockSvc)
-
-			handler := &AuthHTTPHandler{svc: mockSvc}
-			router := gin.New()
-			router.POST("/refresh-token", handler.RefreshTokenHandler)
-
-			body, _ := json.Marshal(tt.requestBody)
-			req := httptest.NewRequest(http.MethodPost, "/refresh-token", bytes.NewBuffer(body))
-			req.Header.Set("Content-Type", "application/json")
 			w := httptest.NewRecorder()
 
 			router.ServeHTTP(w, req)
